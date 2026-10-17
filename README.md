@@ -18,7 +18,7 @@ alexa/              Alexa-Skill
 Einkauf/            Native iOS-App (optional, braucht 99 €/Jahr für Dauerbetrieb)
 ```
 
-Alles läuft auf kostenlosen Diensten: **Supabase** (Datenbank), **Netlify** (Webseite), **Alexa-hosted Skill**.
+Alles läuft auf kostenlosen Diensten: **Supabase** (Datenbank), **GitHub Pages** (Webseite), **Alexa-hosted Skill**.
 
 ---
 
@@ -39,32 +39,32 @@ Alles läuft auf kostenlosen Diensten: **Supabase** (Datenbank), **Netlify** (We
 
 > Im Free Tier pausiert Supabase ein Projekt erst nach 7 Tagen ohne jede Nutzung. Bei einer Einkaufsliste passiert das praktisch nie. Falls doch: im Dashboard auf „Restore“ klicken.
 
-### 2. Web-App bauen und online stellen
+### 2. Online stellen mit GitHub Pages
 
-Auf dem Mac im Terminal:
+Wie bei der Trainingsapp: Jeder `git push` baut die App und veröffentlicht sie automatisch ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
 
-```bash
-cd web && npm install && npm run build
-```
+1. Auf github.com ein neues Repository `einkauf` anlegen (**Public**, ohne README).
+2. Im Projektordner:
+   ```bash
+   git remote add origin https://github.com/hofimo/einkauf.git
+   git push -u origin main
+   ```
+3. Im Repository unter **Settings → Pages → Source** „GitHub Actions“ wählen.
+4. Unter **Actions** den Lauf „Auf GitHub Pages veröffentlichen“ abwarten (1–2 Minuten). Falls er vor Schritt 3 schon fehlgeschlagen ist: **Re-run all jobs**.
+5. Die App läuft unter `https://hofimo.github.io/einkauf/`.
 
-Danach liegt die fertige App im Ordner `web/dist`.
-
-**Online stellen mit Netlify (kostenlos):**
-1. Auf [netlify.com](https://app.netlify.com) kostenlos registrieren.
-2. **Add new site → Deploy manually** und den Ordner `web/dist` ins Browserfenster ziehen.
-3. Unter *Site configuration → Change site name* einen Namen wählen, z. B. `unser-einkauf` → `https://unser-einkauf.netlify.app`
-
-Für ein Update: `npm run build` und den neuen `dist`-Ordner unter *Deploys* erneut hineinziehen.
-(Cloudflare Pages oder GitHub Pages funktionieren genauso.)
+Weil das Repository öffentlich ist, sind Code und der Supabase-Key sichtbar. Das ist so vorgesehen: Der Key steckt ohnehin in jeder App, und eure Daten schützt der Haushalts-Code, der nirgends im Code steht.
 
 ### 3. Auf die iPhones bringen
 
-1. **Dein iPhone:** Die Netlify-Adresse in **Safari** öffnen → **Neuen Haushalt anlegen** → unten **Teilen → Zum Home-Bildschirm**.
+1. **Dein iPhone:** `https://hofimo.github.io/einkauf/` in **Safari** öffnen → beim ersten Mal **Neuen Haushalt anlegen**, sonst **Haushalt beitreten** mit eurem Code → unten **Teilen → Zum Home-Bildschirm**.
 2. **Ihr iPhone:** Bei dir in der App **Mehr → Haushalt teilen**. Sie scannt den QR-Code mit der Kamera, öffnet den Link in Safari und wählt dort ebenfalls **Teilen → Zum Home-Bildschirm**.
 
 Fertig. Beide haben jetzt ein „Einkauf“-Icon. Die App öffnet sich im Vollbild und zeigt dieselbe Liste.
 
 > Falls die Home-Bildschirm-App nach dem Hinzufügen wieder „Haushalt beitreten“ zeigt: unter **Haushalt beitreten** den Code einfügen (vorher unter *Mehr → Haushalt teilen* kopieren).
+
+**Umzug von Netlify:** Das alte Icon löschen und wie oben neu anlegen, dabei **Haushalt beitreten** mit eurem bisherigen Code wählen. Alle Einträge sind dann wieder da, weil sie in Supabase liegen. Danach kann die Netlify-Seite gelöscht werden.
 
 ### 4. Siri
 
