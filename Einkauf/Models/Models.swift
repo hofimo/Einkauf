@@ -175,8 +175,10 @@ struct Quantity: Hashable {
         if ["g", "ml"].contains(lower) && value > 50 { return (value / 5).rounded() * 5 }
         // Zählbares (3 Zwiebeln, 1 Dose, 2 Zehen) aufrunden – halbe Dosen kauft man nicht
         let countable = ["", "stück", "stk.", "stk", "dose", "dosen", "becher", "bund", "pck.", "pck", "päckchen",
-                         "packung", "glas", "zehe", "zehen", "zehe(n)", "dose(n)", "kopf", "knolle", "flasche", "beutel", "netz"]
+                         "packung", "glas", "zehe", "zehen", "zehe(n)", "dose(n)", "kopf", "knolle", "flasche", "beutel", "netz",
+                         "stange", "stangen", "stange(n)", "scheibe", "scheiben", "zweig", "zweige", "würfel", "tüte", "rolle"]
         if countableUp, countable.contains(lower) { return value.rounded(.up) }
+        if ["kg", "l", "liter"].contains(lower) { return (value * 20).rounded() / 20 }
         if value >= 10 { return value.rounded() }
         return (value * 4).rounded() / 4 // auf Viertel
     }

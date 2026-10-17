@@ -8,7 +8,7 @@
 
 create or replace function public.request_household() returns uuid
 language sql stable as $$
-  select nullif(current_setting('request.headers', true)::json->>'x-household-id', '')::uuid
+  select nullif(nullif(current_setting('request.headers', true), '')::json->>'x-household-id', '')::uuid
 $$;
 
 -- Einkaufsliste --------------------------------------------------------------
@@ -82,3 +82,94 @@ begin
 end $$;
 
 grant execute on function public.request_household() to anon, authenticated;
+
+-- IDs auch serverseitig erzeugen können (für Kurzbefehle) ------------------------
+alter table public.shopping_items alter column id set default gen_random_uuid();
+alter table public.recipes        alter column id set default gen_random_uuid();
+alter table public.meal_plan      alter column id set default gen_random_uuid();
+alter table public.staples        alter column id set default gen_random_uuid();
+
+-- "Brot, Milch, Eier" → "Brot, Milch und Eier"
+create or replace function public.join_de(parts text[]) returns text
+language sql immutable as $$
+  select case
+    when coalesce(array_length(parts, 1), 0) <= 1 then coalesce(parts[1], '')
+    else array_to_string(parts[1:array_length(parts, 1) - 1], ', ') || ' und ' || parts[array_length(parts, 1)]
+  end
+$$;
+
+-- Für den Siri-Kurzbefehl: "Brot, 2 Liter Milch und Eier" → drei Einträge -------
+-- Aufruf: POST /rest/v1/rpc/add_items  {"items": "...", "src": "Siri"}
+create or replace function public.add_items(items text, src text default 'Siri')
+returns text
+language plpgsql
+security invoker
+as $$
+declare
+  hh uuid := public.request_household();
+  piece text;
+  m text[];
+  item_name text;
+  qty text;
+  existing record;
+  added text[] := '{}';
+  already text[] := '{}';
+begin
+  if hh is null then
+    return 'Kein Haushalts-Code übergeben.';
+  end if;
+  foreach piece in array regexp_split_to_array(coalesce(items, ''), '\s*,\s*|\s+und\s+|\s+sowie\s+|\s+plus\s+', 'i') loop
+    piece := btrim(regexp_replace(piece, '^(noch|bitte)\s+', '', 'i'));
+    continue when piece = '';
+    qty := '';
+    m := regexp_match(piece, '^(\d+(?:[.,]\d+)?)\s*(kg|g|l|liter|ml|packungen?|päckchen|dosen?|flaschen?|stück|becher|bund|gläser|glas)?\s+(.+)$', 'i');
+    if m is not null then
+      qty := btrim(m[1] || ' ' || coalesce(m[2], ''));
+      piece := m[3];
+    end if;
+    item_name := upper(left(piece, 1)) || substr(piece, 2);
+
+    select * into existing from public.shopping_items
+      where household_id = hh and lower(name) = lower(item_name)
+      order by checked asc limit 1;
+    if found and not existing.checked then
+      already := already || item_name;
+      continue;
+    elsif found then
+      update public.shopping_items
+        set checked = false, checked_at = null, quantity = qty, source = src, created_at = now(), updated_at = now()
+        where id = existing.id;
+    else
+      insert into public.shopping_items (household_id, name, quantity, category, source)
+        values (hh, item_name, qty, '', src);
+    end if;
+    added := added || item_name;
+  end loop;
+
+  if array_length(added, 1) is null and array_length(already, 1) is null then
+    return 'Das habe ich nicht verstanden.';
+  end if;
+  return btrim(
+    case when array_length(added, 1) is null then ''
+         else public.join_de(added) || case when array_length(added, 1) = 1 then ' steht' else ' stehen' end || ' auf der Liste. ' end ||
+    case when array_length(already, 1) is null then ''
+         else public.join_de(already) || case when array_length(already, 1) = 1 then ' stand' else ' standen' end || ' schon drauf.' end);
+end $$;
+
+-- Für den Siri-Kurzbefehl "Was steht auf der Liste?"
+create or replace function public.list_items()
+returns text
+language sql
+security invoker
+stable
+as $$
+  select case when count(*) = 0 then 'Die Einkaufsliste ist leer.'
+    else 'Auf der Liste: ' || public.join_de(array_agg(case when quantity <> '' then quantity || ' ' || name else name end order by created_at)) || '.'
+  end
+  from public.shopping_items
+  where household_id = public.request_household() and not checked
+$$;
+
+grant execute on function public.add_items(text, text) to anon, authenticated;
+grant execute on function public.list_items() to anon, authenticated;
+grant execute on function public.join_de(text[]) to anon, authenticated;

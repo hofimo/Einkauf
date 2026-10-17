@@ -57,7 +57,7 @@ enum RecipeImporter {
         return data
     }
 
-    static func imageURL(template: String?, format: String = "crop-480x300") -> URL? {
+    static func imageURL(template: String?, format: String = "crop-360x240") -> URL? {
         guard let template else { return nil }
         return URL(string: template.replacingOccurrences(of: "<format>", with: format))
     }
@@ -97,7 +97,7 @@ enum RecipeImporter {
         }
         return Draft(title: r.title, servings: max(r.servings ?? 2, 1), ingredients: ingredients,
                      instructions: r.instructions ?? "", sourceURL: r.siteUrl,
-                     imageURL: r.hasImage == true ? imageURL(template: r.previewImageUrlTemplate, format: "crop-960x720")?.absoluteString : nil,
+                     imageURL: r.hasImage == true ? imageURL(template: r.previewImageUrlTemplate, format: "crop-960x640")?.absoluteString : nil,
                      chefkochId: r.id)
     }
 
