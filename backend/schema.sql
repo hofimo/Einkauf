@@ -98,10 +98,19 @@ language sql immutable as $$
   end
 $$;
 
+-- Antworttyp für Kurzbefehle: liefert reinen Text statt JSON (PostgREST-Konvention),
+-- damit Siri keine Anführungszeichen vorliest.
+do $$ begin
+  create domain "text/plain" as text;
+exception when duplicate_object then null;
+end $$;
+drop function if exists public.add_items(text, text);
+drop function if exists public.list_items();
+
 -- Für den Siri-Kurzbefehl: "Brot, 2 Liter Milch und Eier" → drei Einträge -------
 -- Aufruf: POST /rest/v1/rpc/add_items  {"items": "...", "src": "Siri"}
 create or replace function public.add_items(items text, src text default 'Siri')
-returns text
+returns "text/plain"
 language plpgsql
 security invoker
 as $$
@@ -158,7 +167,7 @@ end $$;
 
 -- Für den Siri-Kurzbefehl "Was steht auf der Liste?"
 create or replace function public.list_items()
-returns text
+returns "text/plain"
 language sql
 security invoker
 stable
