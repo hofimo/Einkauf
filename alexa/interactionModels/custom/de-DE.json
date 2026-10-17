@@ -1,0 +1,52 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "einkauf",
+      "intents": [
+        {
+          "name": "AddItemIntent",
+          "slots": [
+            { "name": "item", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "schreibe {item} auf die liste",
+            "schreib {item} auf die liste",
+            "setze {item} auf die liste",
+            "setz {item} auf die liste",
+            "füge {item} hinzu",
+            "füg {item} hinzu",
+            "füge {item} zur liste hinzu",
+            "{item} auf die liste",
+            "ich brauche {item}",
+            "wir brauchen {item}",
+            "notiere {item}",
+            "trage {item} ein",
+            "kaufe {item}",
+            "noch {item}",
+            "und {item}"
+          ]
+        },
+        {
+          "name": "ReadListIntent",
+          "slots": [],
+          "samples": [
+            "was steht auf der liste",
+            "was ist auf der liste",
+            "was müssen wir kaufen",
+            "was brauchen wir",
+            "lies die liste vor",
+            "lies mir die liste vor",
+            "liste vorlesen"
+          ]
+        },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": ["fertig", "das wars", "das war's", "nichts mehr"] },
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.NoIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] }
+      ],
+      "types": []
+    }
+  }
+}
