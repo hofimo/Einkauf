@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useStore } from '../lib/store';
 
 /** Bottom-Sheet im iOS-Stil. */
@@ -89,3 +89,41 @@ export function Empty({ icon, title, children }: { icon: string; title: string; 
   );
 }
 
+
+/** Kürzel mit fester Farbe pro Name, z. B. "T" für Timo */
+export function MemberBadge({ name }: { name: string }) {
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const hue = [152, 24, 210, 280, 340, 45][hash % 6];
+  return (
+    <span className="who" title={`von ${name}`} style={{ '--who': `hsl(${hue} 65% 42%)` } as CSSProperties}>
+      {name.trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+/** Hält den Bildschirm an, solange die Komponente sichtbar ist (Einkaufs- und Kochmodus). */
+export function useWakeLock() {
+  useEffect(() => {
+    type Sentinel = { release: () => Promise<void> };
+    const wl = (navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<Sentinel> } }).wakeLock;
+    if (!wl) return;
+    let sentinel: Sentinel | null = null;
+    let active = true;
+    const acquire = async () => {
+      try {
+        if (active && document.visibilityState === 'visible') sentinel = await wl.request('screen');
+      } catch {
+        // z. B. Energiesparmodus – dann eben nicht
+      }
+    };
+    const onVisible = () => void acquire();
+    void acquire();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', onVisible);
+      void sentinel?.release();
+    };
+  }, []);
+}

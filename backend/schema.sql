@@ -78,11 +78,31 @@ create table if not exists public.settings (
   updated_at      timestamptz not null default now()
 );
 
+-- Push-Benachrichtigungen: ein Eintrag pro Gerät (Web-Push-Abo) -------------------
+create table if not exists public.push_subscriptions (
+  id            uuid primary key default gen_random_uuid(),
+  household_id  uuid not null,
+  member        text not null default '',
+  endpoint      text not null unique,
+  p256dh        text not null,
+  auth          text not null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists push_subscriptions_household on public.push_subscriptions (household_id);
+
+-- Spätere Ergänzungen bestehender Tabellen (idempotent) ---------------------------
+alter table public.shopping_items add column if not exists added_by text not null default '';
+alter table public.settings add column if not exists list_note      text not null default '';
+alter table public.settings add column if not exists list_note_by   text not null default '';
+alter table public.settings add column if not exists shopping_by    text not null default '';
+alter table public.settings add column if not exists shopping_since timestamptz;
+
 -- Row Level Security -----------------------------------------------------------
 do $$
 declare t text;
 begin
-  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings'] loop
+  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings', 'push_subscriptions'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists household_access on public.%I', t);
     execute format(

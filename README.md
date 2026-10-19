@@ -4,6 +4,10 @@ Gemeinsame Einkaufsliste mit Wochenplaner für zwei (oder mehr) iPhones, ähnlic
 **Komplett kostenlos und ohne Ablaufdatum:** Die App ist eine Web-App, die man auf den Home-Bildschirm legt.
 
 - **Einkaufsliste** als Kacheln, automatisch nach Supermarkt-Abteilungen sortiert. Antippen heißt gekauft, lange drücken öffnet die Bearbeitung, unter „Zuletzt gekauft“ holt ein Tippen den Artikel zurück.
+- **Einkaufsmodus** für den Laden: große Kacheln, Fortschrittsbalken, Bildschirm bleibt an. Der/die andere bekommt eine Push-Nachricht („Timo ist einkaufen“), und was dann noch eingetragen wird, erscheint im Laden als „neu“.
+- **Kochmodus:** Rezept Schritt für Schritt in großer Schrift, Zutaten pro Schritt, Timer aus dem Text („20 Minuten“) zum Antippen.
+- **Wer hat was eingetragen:** Kürzel auf den Einträgen der anderen, 🎙 für Siri/Alexa. **Notiz an die Liste** („Bitte die Bio-Eier!“).
+- **Kachel- oder Listenansicht**, jede Abteilung mit eigener Farbe.
 - **Live-Abgleich** zwischen beiden Handys (alle 5 Sekunden). Ohne Netz wird gespeichert und später nachgereicht.
 - **Siri:** „Hey Siri, Einkauf“ → „Was soll auf die Einkaufsliste?“ → „Brot und zwei Liter Milch“
 - **Alexa:** „Alexa, sag Einkauf, ich brauche Brot“
@@ -14,7 +18,7 @@ Gemeinsame Einkaufsliste mit Wochenplaner für zwei (oder mehr) iPhones, ähnlic
 ```
 web/                Web-App (React + TypeScript) – das, was ihr benutzt
 backend/schema.sql  Datenbank für Supabase
-backend/functions/  Edge Function "chefkoch" (Weiterleitung zu Chefkoch)
+backend/functions/  Edge Functions "chefkoch" (Weiterleitung zu Chefkoch) und "notify" (Push)
 alexa/              Alexa-Skill
 Einkauf/            Native iOS-App (optional, braucht 99 €/Jahr für Dauerbetrieb)
 ```
@@ -67,7 +71,17 @@ Fertig. Beide haben jetzt ein „Einkauf“-Icon. Die App öffnet sich im Vollbi
 
 **Umzug von Netlify:** Das alte Icon löschen und wie oben neu anlegen, dabei **Haushalt beitreten** mit eurem bisherigen Code wählen. Alle Einträge sind dann wieder da, weil sie in Supabase liegen. Danach kann die Netlify-Seite gelöscht werden.
 
-### 4. Siri
+### 4. Push-Nachrichten (optional, ca. 5 Minuten)
+
+Damit „Timo ist einkaufen 🛒“ auf dem anderen iPhone aufpoppt:
+
+1. Supabase → **Edge Functions → Deploy a new function → Via Editor**: Name `notify`, Inhalt von [`backend/functions/notify/index.ts`](backend/functions/notify/index.ts) → **Deploy**. In den Einstellungen der Funktion **„Verify JWT“ ausschalten**.
+2. Supabase → **Edge Functions → Secrets**: die drei Werte aus `backend/vapid-keys.local.txt` eintragen (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). Diese Datei liegt nur lokal und wird nicht committet. Der öffentliche Schlüssel steht zusätzlich in `web/src/config.ts`.
+3. Auf jedem iPhone in der App (vom Home-Bildschirm aus): **Mehr → Push-Nachrichten → Einschalten** und erlauben.
+
+Push funktioniert auf dem iPhone nur in der App vom Home-Bildschirm, nicht in einem normalen Safari-Tab (Vorgabe von Apple, ab iOS 16.4).
+
+### 5. Siri
 
 In der App unter **Mehr → Siri & Alexa einrichten** steht eine Schritt-für-Schritt-Anleitung für einen Kurzbefehl. Alle Werte lassen sich dort per Knopfdruck kopieren. Der Kurzbefehl muss auf **jedem** iPhone einmal angelegt werden.
 
@@ -78,7 +92,7 @@ In der App unter **Mehr → Siri & Alexa einrichten** steht eine Schritt-für-Sc
 
 Der Kurzbefehl schreibt direkt in die Datenbank, auch wenn die App gar nicht geöffnet ist.
 
-### 5. Alexa (ca. 10 Minuten)
+### 6. Alexa (ca. 10 Minuten)
 
 Genutzt wird ein **Alexa-hosted Skill**. Er ist kostenlos, braucht kein AWS-Konto und bleibt privat für eure Echo-Geräte.
 

@@ -21,7 +21,7 @@ function readJoinHash(): string | null {
 }
 
 export default function App() {
-  const { householdId } = useStore();
+  const { householdId, member } = useStore();
   const [tab, setTab] = useState<Tab>('list');
   const [openRecipe, setOpenRecipe] = useState<{ id: string; n: number } | null>(null);
 
@@ -53,6 +53,7 @@ export default function App() {
   }, [householdId]);
 
   if (!householdId) return <Onboarding />;
+  if (!member.trim()) return <AskName />;
 
   return (
     <div className="app">
@@ -80,6 +81,22 @@ export default function App() {
         ))}
       </nav>
     </div>
+  );
+}
+
+/** Einmalig: Name für die Kürzel auf der Liste */
+function AskName() {
+  const [name, setName] = useState('');
+  return (
+    <main className="onboarding">
+      <div className="hero-emoji">👋</div>
+      <h1>Wie heißt du?</h1>
+      <p className="muted-text">Damit ihr seht, wer was auf die Liste geschrieben hat, und wer gerade einkaufen ist.</p>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (name.trim()) store.setMember(name); }}>
+        <input className="search" autoFocus value={name} maxLength={20} placeholder="Dein Vorname" onChange={(e) => setName(e.target.value)} />
+        <button className="primary wide" disabled={!name.trim()}>Weiter</button>
+      </form>
+    </main>
   );
 }
 

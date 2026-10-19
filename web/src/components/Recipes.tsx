@@ -4,6 +4,7 @@ import { ingredientLine, parseIngredient } from '../lib/parser';
 import { formatQuantity } from '../lib/quantity';
 import { store, useStore } from '../lib/store';
 import { now, uuid, type Ingredient, type Recipe } from '../lib/types';
+import { CookMode } from './CookMode';
 import { PlanRecipeSheet } from './WeekPlan';
 import { Empty, RecipeImage, Sheet, Stepper, TopBar } from './ui';
 
@@ -116,6 +117,7 @@ function RecipeDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [servings, setServings] = useState(recipe?.servings ?? 2);
   const [editing, setEditing] = useState(false);
   const [planning, setPlanning] = useState(false);
+  const [cooking, setCooking] = useState(false);
 
   if (!recipe) return <><TopBar title="Rezept" left={<button className="link" onClick={onBack}>‹ Rezepte</button>} /><Empty icon="📖" title="Rezept nicht gefunden" /></>;
 
@@ -128,7 +130,10 @@ function RecipeDetail({ id, onBack }: { id: string; onBack: () => void }) {
       />
       <main className="content">
         {recipe.image_url && <RecipeImage src={recipe.image_url} className="hero" />}
-        <button className="primary wide" onClick={() => setPlanning(true)}>📅 Zum Wochenplan hinzufügen</button>
+        <div className="button-row">
+          <button className="primary" onClick={() => setCooking(true)}>👩‍🍳 Jetzt kochen</button>
+          <button className="secondary" onClick={() => setPlanning(true)}>📅 Einplanen</button>
+        </div>
         <div className="card">
           <Stepper value={servings} onChange={setServings} label={(v) => `${v} Portionen`} />
           <IngredientList ingredients={recipe.ingredients} scale={servings / Math.max(recipe.servings, 1)} />
@@ -150,6 +155,7 @@ function RecipeDetail({ id, onBack }: { id: string; onBack: () => void }) {
       </main>
       {editing && <RecipeEditor recipe={recipe} onClose={() => setEditing(false)} />}
       {planning && <PlanRecipeSheet recipe={recipe} servings={servings} onClose={() => setPlanning(false)} />}
+      {cooking && <CookMode recipe={recipe} servings={servings} onClose={() => setCooking(false)} />}
     </>
   );
 }

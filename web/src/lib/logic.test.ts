@@ -98,9 +98,42 @@ describe('Laufreihenfolge', async () => {
   });
   it('sortiert die Liste entsprechend', () => {
     const item = (name: string, category: string) => ({ id: name, household_id: 'h', name, quantity: '', note: '', category,
-      checked: false, checked_at: null, source: '', created_at: '', updated_at: '' });
+      checked: false, checked_at: null, source: '', added_by: '', created_at: '', updated_at: '' });
     const groups = openByCategory([item('Milch', 'Milch & Käse'), item('Nudeln', 'Nudeln, Reis & Konserven')],
       ['Nudeln, Reis & Konserven']);
     expect(groups.map((g) => g.category.name)).toEqual(['Nudeln, Reis & Konserven', 'Milch & Käse']);
+  });
+});
+
+describe('Kochmodus', async () => {
+  const { splitSteps, findTimers, ingredientsInStep, formatTime } = await import('./cooking');
+  const { parseIngredient } = await import('./parser');
+  it('teilt Absätze und Nummerierung in Schritte', () => {
+    expect(splitSteps('Zwiebeln schälen.\n\nIm Topf anbraten.')).toEqual(['Zwiebeln schälen.', 'Im Topf anbraten.']);
+    expect(splitSteps('1. Wasser kochen\n2. Nudeln rein\n3. Abgießen')).toEqual(['Wasser kochen', 'Nudeln rein', 'Abgießen']);
+  });
+  it('teilt lange Blöcke in Satzgruppen', () => {
+    const long = Array.from({ length: 8 }, (_, i) => `Das ist Satz Nummer ${i + 1} mit etwas mehr Text darin.`).join(' ');
+    const steps = splitSteps(long);
+    expect(steps.length).toBeGreaterThan(1);
+    expect(steps.join(' ')).toBe(long);
+  });
+  it.each([
+    ['Bei 180 Grad ca. 20 Minuten backen.', [1200]],
+    ['10-15 Min. köcheln lassen', [900]],
+    ['1,5 Stunden schmoren, dann 30 Sekunden mixen', [5400, 30]],
+    ['Mit 2 EL Öl anbraten', []],
+  ])('Timer in „%s“', (step, secs) => {
+    expect(findTimers(step).map((t) => t.seconds)).toEqual(secs);
+  });
+  it('findet Zutaten im Schritt', () => {
+    const ings = ['2 Zwiebel(n)', '500 g Hackfleisch, gemischtes', '3 Möhren', '1 Prise Salz', '200 g Käse, geriebener']
+      .map((l) => parseIngredient(l)!);
+    const found = ingredientsInStep('Die Zwiebeln und Möhren würfeln, dann das Hackfleisch anbraten.', ings).map((i) => i.name);
+    expect(found).toEqual(['Zwiebel(n)', 'Hackfleisch, gemischtes', 'Möhren']);
+  });
+  it('formatiert Zeiten', () => {
+    expect(formatTime(75)).toBe('1:15');
+    expect(formatTime(3725)).toBe('1:02:05');
   });
 });

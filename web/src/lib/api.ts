@@ -50,8 +50,13 @@ export class Api {
     return res.json();
   }
 
-  async upsert(table: Table, row: object): Promise<void> {
-    await this.send(table, { method: 'POST', body: JSON.stringify(row) }, 'resolution=merge-duplicates,return=minimal');
+  async upsert(table: Table | 'push_subscriptions', row: object, onConflict?: string): Promise<void> {
+    const path = onConflict ? `${table}?on_conflict=${onConflict}` : table;
+    await this.send(path, { method: 'POST', body: JSON.stringify(row) }, 'resolution=merge-duplicates,return=minimal');
+  }
+
+  async deleteWhere(table: 'push_subscriptions', column: string, value: string): Promise<void> {
+    await this.send(`${table}?${column}=eq.${encodeURIComponent(value)}`, { method: 'DELETE' }, 'return=minimal');
   }
 
   async delete(table: Table, id: string): Promise<void> {

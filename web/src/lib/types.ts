@@ -11,6 +11,8 @@ export interface ShoppingItem {
   checked_at: string | null;
   /** Woher der Eintrag stammt, z. B. "Lasagne", "Siri" oder "Alexa". */
   source: string;
+  /** Wer ihn eingetragen hat (Name aus "Mehr → Dein Name") */
+  added_by: string;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +69,12 @@ export interface Settings {
   week_start: number;
   /** Abteilungen in Laufreihenfolge des eigenen Supermarkts */
   category_order: string[];
+  /** Notiz an die Liste, z. B. "Bitte die Bio-Eier!" */
+  list_note: string;
+  list_note_by: string;
+  /** Wer gerade einkaufen ist (Einkaufsmodus) */
+  shopping_by: string;
+  shopping_since: string | null;
   created_at: string;
   updated_at: string;
 }

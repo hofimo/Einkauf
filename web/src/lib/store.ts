@@ -29,11 +29,22 @@ export interface State {
   staples: Staple[];
   settings: Settings[];
   outbox: PendingOp[];
+  /** Name der Person an diesem Gerät */
+  member: string;
   sync: SyncState;
   lastSync: string | null;
 }
 
 const STORAGE_KEY = 'einkauf-state-v1';
+const MEMBER_KEY = 'einkauf-member';
+
+function readMember(): string {
+  try {
+    return localStorage.getItem(MEMBER_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
 
 const empty = (householdId: string | null): State => ({
   householdId,
@@ -43,6 +54,7 @@ const empty = (householdId: string | null): State => ({
   staples: [],
   settings: [],
   outbox: [],
+  member: readMember(),
   sync: { kind: 'idle' },
   lastSync: null,
 });
@@ -50,7 +62,7 @@ const empty = (householdId: string | null): State => ({
 function load(): State {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...empty(null), ...JSON.parse(raw), sync: { kind: 'idle' } };
+    if (raw) return { ...empty(null), ...JSON.parse(raw), member: readMember(), sync: { kind: 'idle' } };
   } catch {
     // Speicher nicht verfügbar → leer starten
   }
@@ -135,7 +147,9 @@ class Store {
     }
     const done = items.find((i) => i.checked && normalized(i.name) === key);
     if (done) {
-      this.save('shopping_items', { ...done, checked: false, checked_at: null, quantity, note: '', source, created_at: now() });
+      this.save('shopping_items', {
+        ...done, checked: false, checked_at: null, quantity, note: '', source, added_by: this.state.member.trim(), created_at: now(),
+      });
       return;
     }
     this.save('shopping_items', {
@@ -148,6 +162,7 @@ class Store {
       checked: false,
       checked_at: null,
       source,
+      added_by: this.state.member.trim(),
       created_at: now(),
       updated_at: now(),
     });
@@ -245,7 +260,29 @@ class Store {
 
   // ---------------------------------------------------------------- Einstellungen
 
-  updateSettings(patch: Partial<Pick<Settings, 'week_start' | 'category_order'>>) {
+  setMember(name: string) {
+    // Beim Tippen nicht trimmen (sonst geht "Anna Lena" nicht); getrimmt wird beim Verwenden
+    try {
+      localStorage.setItem(MEMBER_KEY, name);
+    } catch {
+      // ohne Speicher gilt der Name nur bis zum Neuladen
+    }
+    this.set({ member: name });
+  }
+
+  setNote(text: string) {
+    this.updateSettings({ list_note: text.trim(), list_note_by: text.trim() ? this.state.member.trim() : '' });
+  }
+
+  startShopping() {
+    this.updateSettings({ shopping_by: this.state.member.trim() || 'Jemand', shopping_since: now() });
+  }
+
+  stopShopping() {
+    this.updateSettings({ shopping_by: '', shopping_since: null });
+  }
+
+  updateSettings(patch: Partial<Omit<Settings, 'id' | 'household_id' | 'created_at' | 'updated_at'>>) {
     const hid = this.state.householdId;
     if (!hid) return;
     this.save('settings', { ...settingsOf(this.state), ...patch });
@@ -376,9 +413,19 @@ export function useStore(): State {
 /** Einstellungen des Haushalts (mit Standardwerten, solange noch nichts gespeichert ist). */
 export function settingsOf(state: State): Settings {
   const hid = state.householdId ?? '';
-  return state.settings.find((s) => s.household_id === hid) ?? {
-    id: hid, household_id: hid, week_start: 1, category_order: [], created_at: now(), updated_at: now(),
+  const defaults: Settings = {
+    id: hid, household_id: hid, week_start: 1, category_order: [], list_note: '', list_note_by: '',
+    shopping_by: '', shopping_since: null, created_at: now(), updated_at: now(),
   };
+  const saved = state.settings.find((s) => s.household_id === hid);
+  return saved ? { ...defaults, ...saved } : defaults;
+}
+
+/** Wer gerade einkaufen ist (nach 2 Stunden gilt der Einkauf als beendet, falls die App einfach geschlossen wurde). */
+export function activeShopper(state: State): string | null {
+  const s = settingsOf(state);
+  if (!s.shopping_by || !s.shopping_since) return null;
+  return Date.now() - new Date(s.shopping_since).getTime() < 2 * 3600_000 ? s.shopping_by : null;
 }
 
 type CategoryInfo = (typeof CATEGORIES)[number];

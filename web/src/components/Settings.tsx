@@ -1,5 +1,6 @@
 import qrcode from 'qrcode-generator';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { disablePush, enablePush, pushStatus, type PushStatus } from '../lib/push';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { orderedCategories, settingsOf, store, useStore } from '../lib/store';
 import { TopBar } from './ui';
@@ -32,6 +33,20 @@ function MainPage({ go }: { go: (p: Page) => void }) {
 
   return (
     <main className="content">
+      <h3 className="section-title first">Du</h3>
+      <ul className="list">
+        <li>
+          <label className="list-row">
+            <span className="list-text">Dein Name</span>
+            <input className="inline-input" value={state.member} placeholder="z. B. Timo" maxLength={20}
+              onChange={(e) => store.setMember(e.target.value)} />
+          </label>
+        </li>
+        <li><PushRow /></li>
+      </ul>
+      <p className="hint">Der Name erscheint als Kürzel auf allem, was du einträgst. Push-Nachrichten bekommst du, wenn {'der/die andere'} einkaufen geht.</p>
+
+      <h3 className="section-title">Haushalt</h3>
       <ul className="list">
         <li><button className="list-row" onClick={() => go('share')}>👥 <span className="list-text">Haushalt teilen</span><span className="chevron">›</span></button></li>
         <li><button className="list-row" onClick={() => go('siri')}>🎙 <span className="list-text">Siri & Alexa einrichten</span><span className="chevron">›</span></button></li>
@@ -93,6 +108,60 @@ function MainPage({ go }: { go: (p: Page) => void }) {
         }
       }}>Haushalt verlassen</button>
     </main>
+  );
+}
+
+function PushRow() {
+  const { householdId, member } = useStore();
+  const [status, setStatus] = useState<PushStatus | 'busy'>('busy');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    pushStatus().then(setStatus, () => setStatus('unsupported'));
+  }, []);
+
+  const toggle = async () => {
+    if (!householdId) return;
+    setError(null);
+    const before = status;
+    setStatus('busy');
+    try {
+      if (before === 'on') {
+        await disablePush(householdId);
+        setStatus('off');
+      } else {
+        setStatus(await enablePush(householdId, member));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStatus(before);
+    }
+  };
+
+  const text: Record<PushStatus | 'busy', string> = {
+    busy: '…',
+    on: 'An',
+    off: 'Einschalten',
+    denied: 'Blockiert',
+    'needs-install': 'Nicht verfügbar',
+    unsupported: 'Nicht verfügbar',
+  };
+  const help: Partial<Record<PushStatus | 'busy', string>> = {
+    denied: 'Erlauben unter iPhone-Einstellungen → Mitteilungen → Einkauf.',
+    'needs-install': 'Geht nur in der App vom Home-Bildschirm (Safari → Teilen → Zum Home-Bildschirm).',
+    unsupported: 'Dieser Browser kann keine Push-Nachrichten empfangen.',
+  };
+  const canToggle = status === 'on' || status === 'off';
+
+  return (
+    <>
+      <button className="list-row" disabled={!canToggle} onClick={toggle}>
+        <span className="list-text">🔔 Push-Nachrichten</span>
+        <span className={status === 'on' ? 'on-text' : status === 'off' ? 'link' : 'muted-text'}>{text[status]}</span>
+      </button>
+      {help[status] && <p className="hint small-pad">{help[status]}</p>}
+      {error && <p className="error small-pad">{error}</p>}
+    </>
   );
 }
 

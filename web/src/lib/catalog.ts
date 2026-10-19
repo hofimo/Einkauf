@@ -1,18 +1,18 @@
 // Abteilungen in der Reihenfolge, in der man durch den Supermarkt läuft.
 export const CATEGORIES = [
-  { key: 'produce', name: 'Obst & Gemüse', emoji: '🥦' },
-  { key: 'meat', name: 'Fleisch & Fisch', emoji: '🥩' },
-  { key: 'eggs', name: 'Eier', emoji: '🥚' },
-  { key: 'bakery', name: 'Brot & Backwaren', emoji: '🥖' },
-  { key: 'pantry', name: 'Nudeln, Reis & Konserven', emoji: '🍝' },
-  { key: 'sweets', name: 'Süßes & Snacks', emoji: '🍫' },
-  { key: 'drinks', name: 'Getränke', emoji: '🧃' },
-  { key: 'household', name: 'Drogerie & Haushalt', emoji: '🧻' },
-  { key: 'dairy', name: 'Milch & Käse', emoji: '🧀' },
-  { key: 'sausage', name: 'Wurst', emoji: '🌭' },
-  { key: 'baking', name: 'Gewürze & Backen', emoji: '🧂' },
-  { key: 'frozen', name: 'Tiefkühl', emoji: '🧊' },
-  { key: 'other', name: 'Sonstiges', emoji: '🛒' },
+  { key: 'produce', color: '#2f9e57', name: 'Obst & Gemüse', emoji: '🥦' },
+  { key: 'meat', color: '#d64545', name: 'Fleisch & Fisch', emoji: '🥩' },
+  { key: 'eggs', color: '#e0a21c', name: 'Eier', emoji: '🥚' },
+  { key: 'bakery', color: '#b9773a', name: 'Brot & Backwaren', emoji: '🥖' },
+  { key: 'pantry', color: '#e07b2e', name: 'Nudeln, Reis & Konserven', emoji: '🍝' },
+  { key: 'sweets', color: '#cc5a9b', name: 'Süßes & Snacks', emoji: '🍫' },
+  { key: 'drinks', color: '#2f86d1', name: 'Getränke', emoji: '🧃' },
+  { key: 'household', color: '#7564cf', name: 'Drogerie & Haushalt', emoji: '🧻' },
+  { key: 'dairy', color: '#2aa3b8', name: 'Milch & Käse', emoji: '🧀' },
+  { key: 'sausage', color: '#b8433b', name: 'Wurst', emoji: '🌭' },
+  { key: 'baking', color: '#8c7f63', name: 'Gewürze & Backen', emoji: '🧂' },
+  { key: 'frozen', color: '#4aa8de', name: 'Tiefkühl', emoji: '🧊' },
+  { key: 'other', color: '#7d7d84', name: 'Sonstiges', emoji: '🛒' },
 ] as const;
 
 export const OTHER = 'Sonstiges';
@@ -129,6 +129,11 @@ export function categoryFor(name: string): string {
 /** Gültige Abteilung des Eintrags; ohne (z. B. von Siri/Alexa angelegt) aus dem Namen abgeleitet. */
 export function itemCategory(item: { name: string; category: string }): string {
   return CATEGORIES.some((c) => c.name === item.category) ? item.category : categoryFor(item.name);
+}
+
+/** Farbe der Abteilung (für Kacheln und Überschriften) */
+export function categoryColor(name: string): string {
+  return CATEGORIES.find((c) => c.name === name)?.color ?? '#7d7d84';
 }
 
 export function emojiFor(name: string, category?: string): string {
