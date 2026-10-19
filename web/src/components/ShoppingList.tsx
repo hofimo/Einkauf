@@ -1,18 +1,20 @@
 import { useMemo, useRef, useState } from 'react';
-import { CATEGORIES, emojiFor, itemCategory, SUGGESTIONS, categoryFor } from '../lib/catalog';
-import { checkedItems, openByCategory, store, useStore } from '../lib/store';
+import { emojiFor, itemCategory, SUGGESTIONS, categoryFor } from '../lib/catalog';
+import { checkedItems, openByCategory, orderedCategories, settingsOf, store, useStore } from '../lib/store';
 import type { ShoppingItem } from '../lib/types';
 import { Empty, Sheet, SyncBadge, TopBar } from './ui';
 
 /** Einkaufsliste im Stil von Bring: Kacheln nach Abteilung, Antippen = gekauft. */
 export function ShoppingList() {
-  const { shopping_items: items } = useStore();
+  const state = useStore();
+  const items = state.shopping_items;
+  const order = settingsOf(state).category_order;
   const [input, setInput] = useState('');
   const [editing, setEditing] = useState<ShoppingItem | null>(null);
   const [showChecked, setShowChecked] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const groups = useMemo(() => openByCategory(items), [items]);
+  const groups = useMemo(() => openByCategory(items, order), [items, order]);
   const checked = useMemo(() => checkedItems(items), [items]);
 
   const suggestions = useMemo(() => {
@@ -160,6 +162,7 @@ function Tile({ item, onEdit }: { item: ShoppingItem; onEdit: () => void }) {
 }
 
 function ItemEditor({ item, onClose }: { item: ShoppingItem; onClose: () => void }) {
+  const order = settingsOf(useStore()).category_order;
   const [draft, setDraft] = useState({ ...item, category: itemCategory(item) });
   const save = () => {
     if (!draft.name.trim()) return;
@@ -175,7 +178,7 @@ function ItemEditor({ item, onClose }: { item: ShoppingItem; onClose: () => void
         <label>
           Abteilung
           <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
-            {CATEGORIES.map((c) => <option key={c.key} value={c.name}>{c.emoji} {c.name}</option>)}
+            {orderedCategories(order).map((c) => <option key={c.key} value={c.name}>{c.emoji} {c.name}</option>)}
           </select>
         </label>
         {item.source && <p className="hint">Für: {item.source}</p>}

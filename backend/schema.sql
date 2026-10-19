@@ -66,11 +66,23 @@ create table if not exists public.staples (
 );
 create index if not exists staples_household on public.staples (household_id);
 
+-- Haushalts-Einstellungen (eine Zeile pro Haushalt, id = household_id) -----------
+create table if not exists public.settings (
+  id              uuid primary key,
+  household_id    uuid not null unique,
+  -- Erster Tag im Wochenplan: 0 = Sonntag, 1 = Montag … 6 = Samstag
+  week_start      integer not null default 1 check (week_start between 0 and 6),
+  -- Abteilungen in Laufreihenfolge des eigenen Supermarkts
+  category_order  jsonb not null default '[]'::jsonb,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
 -- Row Level Security -----------------------------------------------------------
 do $$
 declare t text;
 begin
-  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples'] loop
+  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists household_access on public.%I', t);
     execute format(

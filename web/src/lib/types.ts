@@ -59,13 +59,26 @@ export interface Staple {
   updated_at: string;
 }
 
-export type Table = 'shopping_items' | 'recipes' | 'meal_plan' | 'staples';
+export interface Settings {
+  /** = household_id, damit es genau eine Zeile pro Haushalt gibt */
+  id: string;
+  household_id: string;
+  /** Erster Tag im Wochenplan: 0 = Sonntag, 1 = Montag … 6 = Samstag */
+  week_start: number;
+  /** Abteilungen in Laufreihenfolge des eigenen Supermarkts */
+  category_order: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export type Table = 'shopping_items' | 'recipes' | 'meal_plan' | 'staples' | 'settings';
 
 export interface Tables {
   shopping_items: ShoppingItem;
   recipes: Recipe;
   meal_plan: MealPlanEntry;
   staples: Staple;
+  settings: Settings;
 }
 
 export const uuid = (): string => crypto.randomUUID();

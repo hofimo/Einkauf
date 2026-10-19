@@ -8,7 +8,8 @@ Gemeinsame Einkaufsliste mit Wochenplaner für zwei (oder mehr) iPhones, ähnlic
 - **Siri:** „Hey Siri, Einkauf“ → „Was soll auf die Einkaufsliste?“ → „Brot und zwei Liter Milch“
 - **Alexa:** „Alexa, öffne Einkauf und schreibe Brot auf die Liste“
 - **Rezepte:** Chefkoch durchsuchen, Links von Chefkoch und anderen Rezeptseiten importieren oder eigene Rezepte anlegen.
-- **Wochenplan:** Gericht für einen Tag einplanen → Zutaten landen passend zur Portionenzahl auf der Liste. Der **Grundvorrat** (Salz, Pfeffer, Öl, Mehl …) wird weggelassen und ist in der App anpassbar.
+- **Eigene Laufreihenfolge:** Die Abteilungen erscheinen in der Reihenfolge eures Supermarkts (*Mehr → Reihenfolge im Laden*).
+- **Wochenplan:** Starttag frei wählbar (z. B. Freitag, wenn ihr freitags einkauft). Gericht für einen Tag einplanen → Zutaten landen passend zur Portionenzahl auf der Liste. Der **Grundvorrat** (Salz, Pfeffer, Öl, Mehl …) wird weggelassen und ist in der App anpassbar.
 
 ```
 web/                Web-App (React + TypeScript) – das, was ihr benutzt
@@ -43,21 +44,21 @@ Alles läuft auf kostenlosen Diensten: **Supabase** (Datenbank), **GitHub Pages*
 
 Wie bei der Trainingsapp: Jeder `git push` baut die App und veröffentlicht sie automatisch ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
 
-1. Auf github.com ein neues Repository `einkauf` anlegen (**Public**, ohne README).
+1. Auf github.com ein neues Repository `Einkauf` anlegen (**Public**, ohne README).
 2. Im Projektordner:
    ```bash
-   git remote add origin https://github.com/hofimo/einkauf.git
+   git remote add origin https://github.com/hofimo/Einkauf.git
    git push -u origin main
    ```
 3. Im Repository unter **Settings → Pages → Source** „GitHub Actions“ wählen.
 4. Unter **Actions** den Lauf „Auf GitHub Pages veröffentlichen“ abwarten (1–2 Minuten). Falls er vor Schritt 3 schon fehlgeschlagen ist: **Re-run all jobs**.
-5. Die App läuft unter `https://hofimo.github.io/einkauf/`.
+5. Die App läuft unter `https://hofimo.github.io/Einkauf/`.
 
 Weil das Repository öffentlich ist, sind Code und der Supabase-Key sichtbar. Das ist so vorgesehen: Der Key steckt ohnehin in jeder App, und eure Daten schützt der Haushalts-Code, der nirgends im Code steht.
 
 ### 3. Auf die iPhones bringen
 
-1. **Dein iPhone:** `https://hofimo.github.io/einkauf/` in **Safari** öffnen → beim ersten Mal **Neuen Haushalt anlegen**, sonst **Haushalt beitreten** mit eurem Code → unten **Teilen → Zum Home-Bildschirm**.
+1. **Dein iPhone:** `https://hofimo.github.io/Einkauf/` in **Safari** öffnen → beim ersten Mal **Neuen Haushalt anlegen**, sonst **Haushalt beitreten** mit eurem Code → unten **Teilen → Zum Home-Bildschirm**.
 2. **Ihr iPhone:** Bei dir in der App **Mehr → Haushalt teilen**. Sie scannt den QR-Code mit der Kamera, öffnet den Link in Safari und wählt dort ebenfalls **Teilen → Zum Home-Bildschirm**.
 
 Fertig. Beide haben jetzt ein „Einkauf“-Icon. Die App öffnet sich im Vollbild und zeigt dieselbe Liste.
@@ -106,6 +107,8 @@ Lehnt die Konsole den einwortigen Aufrufnamen `einkauf` ab, im JSON `"invocation
 **Datenschutz:** Jeder Haushalt hat einen zufälligen Code (UUID). Nur wer ihn kennt, kann die Daten lesen oder ändern. Das erzwingt Row Level Security in der Datenbank. Den Code also nur deiner Freundin geben.
 
 **Chefkoch** hat keine offizielle Schnittstelle. Die App nutzt dieselbe wie die Chefkoch-App, über die Edge Function als Zwischenstation. Ändert Chefkoch etwas, funktioniert der **Import per Link** weiterhin: Er liest die standardisierten Rezeptdaten, die fast alle Rezeptseiten einbetten. Die Rezepte sind nur für den privaten Gebrauch gedacht.
+
+**Schema-Updates:** Kommen neue Funktionen hinzu, die Supabase betreffen, einfach [`backend/schema.sql`](backend/schema.sql) erneut komplett im SQL Editor ausführen. Das ist gefahrlos, bestehende Daten bleiben erhalten.
 
 **Grundvorrat** (*Mehr → Grundvorrat*): Diese Zutaten sind beim Einplanen abgewählt, lassen sich aber antippen und trotzdem übernehmen. „Öl“ erfasst Olivenöl und Rapsöl, „Brühe“ erfasst Gemüsebrühe. Zuckerschoten oder Essiggurken werden dagegen nicht weggelassen.
 

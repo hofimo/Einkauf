@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { displayName } from '../lib/parser';
 import { formatQuantity } from '../lib/quantity';
-import { store, useStore } from '../lib/store';
+import { settingsOf, store, useStore } from '../lib/store';
 import type { Recipe } from '../lib/types';
 import { RecipeImage, Sheet, Stepper, TopBar } from './ui';
 
@@ -12,16 +12,18 @@ export const dayKey = (d: Date) =>
 
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
-function startOfWeek(d: Date): Date {
-  const monday = (d.getDay() + 6) % 7; // Montag = 0
-  return addDays(d, -monday);
+/** Beginn der Planwoche, die `d` enthält. firstDay: 0 = Sonntag, 1 = Montag … 6 = Samstag */
+export function startOfWeek(d: Date, firstDay: number): Date {
+  return addDays(d, -((d.getDay() - firstDay + 7) % 7));
 }
 
-function isoWeek(d: Date): number {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-  return Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+/** "17.–23. Okt." bzw. "30. Okt. – 5. Nov." */
+function rangeTitle(start: Date): string {
+  const end = addDays(start, 6);
+  const month = (d: Date) => d.toLocaleDateString('de-DE', { month: 'short' });
+  return start.getMonth() === end.getMonth()
+    ? `${start.getDate()}.–${end.getDate()}. ${month(end)}`
+    : `${start.getDate()}. ${month(start)} – ${end.getDate()}. ${month(end)}`;
 }
 
 const weekday = (d: Date) => d.toLocaleDateString('de-DE', { weekday: 'long' });
@@ -30,11 +32,15 @@ const shortDate = (d: Date) => d.toLocaleDateString('de-DE', { day: 'numeric', m
 // ---------------------------------------------------------------- Wochenansicht
 
 export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void }) {
-  const { meal_plan, recipes } = useStore();
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const state = useStore();
+  const { meal_plan, recipes } = state;
+  const firstDay = settingsOf(state).week_start;
+  // Wochen relativ zur aktuellen; so passt sich die Ansicht an, wenn der Starttag geändert wird
+  const [offset, setOffset] = useState(0);
   const [pickDay, setPickDay] = useState<Date | null>(null);
   const today = dayKey(new Date());
-  const thisWeek = dayKey(startOfWeek(new Date())) === dayKey(weekStart);
+  const thisWeek = offset === 0;
+  const weekStart = useMemo(() => addDays(startOfWeek(new Date(), firstDay), offset * 7), [firstDay, offset]);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -47,13 +53,13 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
   return (
     <>
       <TopBar
-        title={thisWeek ? `Diese Woche · KW ${isoWeek(weekStart)}` : `KW ${isoWeek(weekStart)}`}
-        left={<button className="icon-btn" aria-label="Vorige Woche" onClick={() => setWeekStart(addDays(weekStart, -7))}>‹</button>}
-        right={<button className="icon-btn" aria-label="Nächste Woche" onClick={() => setWeekStart(addDays(weekStart, 7))}>›</button>}
+        title={thisWeek ? `Diese Woche · ${rangeTitle(weekStart)}` : rangeTitle(weekStart)}
+        left={<button className="icon-btn" aria-label="Vorige Woche" onClick={() => setOffset(offset - 1)}>‹</button>}
+        right={<button className="icon-btn" aria-label="Nächste Woche" onClick={() => setOffset(offset + 1)}>›</button>}
       />
       <main className="content">
         {!thisWeek && (
-          <button className="link center" onClick={() => setWeekStart(startOfWeek(new Date()))}>Zur aktuellen Woche</button>
+          <button className="link center" onClick={() => setOffset(0)}>Zur aktuellen Woche</button>
         )}
         {days.map((day) => {
           const key = dayKey(day);

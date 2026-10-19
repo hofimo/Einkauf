@@ -3,7 +3,7 @@ import { Api, ApiError } from './api';
 import { categoryFor, CATEGORIES, itemCategory } from './catalog';
 import { DEFAULT_STAPLES, displayName, isStaple, parseIngredient, splitSpoken } from './parser';
 import { combineQuantities, formatQuantity } from './quantity';
-import { now, uuid, type Ingredient, type MealPlanEntry, type Recipe, type ShoppingItem, type Staple, type Table, type Tables } from './types';
+import { now, uuid, type Ingredient, type MealPlanEntry, type Recipe, type ShoppingItem, type Settings, type Staple, type Table, type Tables } from './types';
 
 /** Eine noch nicht zum Server übertragene Änderung (Offline-Warteschlange). */
 interface PendingOp {
@@ -27,6 +27,7 @@ export interface State {
   recipes: Recipe[];
   meal_plan: MealPlanEntry[];
   staples: Staple[];
+  settings: Settings[];
   outbox: PendingOp[];
   sync: SyncState;
   lastSync: string | null;
@@ -40,6 +41,7 @@ const empty = (householdId: string | null): State => ({
   recipes: [],
   meal_plan: [],
   staples: [],
+  settings: [],
   outbox: [],
   sync: { kind: 'idle' },
   lastSync: null,
@@ -229,6 +231,14 @@ class Store {
     this.remove('staples', staple.id);
   }
 
+  // ---------------------------------------------------------------- Einstellungen
+
+  updateSettings(patch: Partial<Pick<Settings, 'week_start' | 'category_order'>>) {
+    const hid = this.state.householdId;
+    if (!hid) return;
+    this.save('settings', { ...settingsOf(this.state), ...patch });
+  }
+
   // ---------------------------------------------------------------- Lokale Änderungen
 
   private save<T extends Table>(table: T, record: Tables[T]) {
@@ -285,12 +295,14 @@ class Store {
             patch.recipes = this.merged('recipes', await api.fetchAll('recipes'));
             patch.meal_plan = this.merged('meal_plan', await api.fetchAll('meal_plan'));
             patch.staples = this.merged('staples', await api.fetchAll('staples'));
+            // Fehlt die Tabelle noch (schema.sql nicht erneut ausgeführt), läuft der Rest trotzdem
+            patch.settings = this.merged('settings', await api.fetchAll('settings').catch(() => this.state.settings));
             this.lastFullSync = Date.now();
           }
           // Haushalt gewechselt, während wir geladen haben? Dann verwerfen.
           if (api.householdId !== this.state.householdId) return;
           // Während des Ladens entstandene lokale Änderungen erneut darüberlegen
-          for (const t of ['shopping_items', 'recipes', 'meal_plan', 'staples'] as const) {
+          for (const t of ['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings'] as const) {
             if (patch[t]) (patch as Record<string, unknown>)[t] = this.merged(t, patch[t] as Tables[typeof t][]);
           }
           this.set({ ...patch, sync: { kind: 'ok' }, lastSync: now() });
@@ -348,9 +360,28 @@ export function useStore(): State {
 
 // ---------------------------------------------------------------- Abgeleitete Daten
 
-export function openByCategory(items: ShoppingItem[]): { category: (typeof CATEGORIES)[number]; items: ShoppingItem[] }[] {
+/** Einstellungen des Haushalts (mit Standardwerten, solange noch nichts gespeichert ist). */
+export function settingsOf(state: State): Settings {
+  const hid = state.householdId ?? '';
+  return state.settings.find((s) => s.household_id === hid) ?? {
+    id: hid, household_id: hid, week_start: 1, category_order: [], created_at: now(), updated_at: now(),
+  };
+}
+
+type CategoryInfo = (typeof CATEGORIES)[number];
+
+/** Abteilungen in der gewählten Laufreihenfolge; neue/unbekannte hinten an. */
+export function orderedCategories(order: string[]): CategoryInfo[] {
+  const rank = (c: CategoryInfo) => {
+    const i = order.indexOf(c.name);
+    return i >= 0 ? i : order.length + CATEGORIES.indexOf(c);
+  };
+  return [...CATEGORIES].sort((a, b) => rank(a) - rank(b));
+}
+
+export function openByCategory(items: ShoppingItem[], order: string[] = []): { category: CategoryInfo; items: ShoppingItem[] }[] {
   const open = items.filter((i) => !i.checked);
-  return CATEGORIES.map((category) => ({
+  return orderedCategories(order).map((category) => ({
     category,
     items: open.filter((i) => itemCategory(i) === category.name).sort((a, b) => a.created_at.localeCompare(b.created_at)),
   })).filter((g) => g.items.length > 0);

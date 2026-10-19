@@ -1,23 +1,26 @@
 import qrcode from 'qrcode-generator';
 import { useMemo, useState, type ReactNode } from 'react';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
-import { store, useStore } from '../lib/store';
+import { orderedCategories, settingsOf, store, useStore } from '../lib/store';
 import { TopBar } from './ui';
 
 export const joinLink = (id: string) => `${location.origin}${location.pathname}#join=${id}`;
 
-type Page = 'main' | 'share' | 'siri';
+type Page = 'main' | 'share' | 'siri' | 'order';
 
 export function Settings() {
   const [page, setPage] = useState<Page>('main');
   const back = <button className="link" onClick={() => setPage('main')}>‹ Mehr</button>;
   if (page === 'share') return <><TopBar title="Haushalt teilen" left={back} /><SharePage /></>;
   if (page === 'siri') return <><TopBar title="Siri & Alexa" left={back} /><VoicePage /></>;
+  if (page === 'order') return <><TopBar title="Reihenfolge im Laden" left={back} /><OrderPage /></>;
   return <><TopBar title="Mehr" /><MainPage go={setPage} /></>;
 }
 
 function MainPage({ go }: { go: (p: Page) => void }) {
-  const { staples, sync, lastSync, outbox } = useStore();
+  const state = useStore();
+  const { staples, sync, lastSync, outbox } = state;
+  const settings = settingsOf(state);
   const [newStaple, setNewStaple] = useState('');
   const sorted = useMemo(() => [...staples].sort((a, b) => a.name.localeCompare(b.name, 'de')), [staples]);
 
@@ -33,6 +36,25 @@ function MainPage({ go }: { go: (p: Page) => void }) {
         <li><button className="list-row" onClick={() => go('share')}>👥 <span className="list-text">Haushalt teilen</span><span className="chevron">›</span></button></li>
         <li><button className="list-row" onClick={() => go('siri')}>🎙 <span className="list-text">Siri & Alexa einrichten</span><span className="chevron">›</span></button></li>
       </ul>
+
+      <h3 className="section-title">Einkauf & Wochenplan</h3>
+      <ul className="list">
+        <li>
+          <label className="list-row">
+            <span className="list-text">Woche beginnt am</span>
+            <select className="inline-select" value={settings.week_start}
+              onChange={(e) => store.updateSettings({ week_start: Number(e.target.value) })}>
+              {WEEKDAYS.map((name, i) => <option key={i} value={(i + 1) % 7}>{name}</option>)}
+            </select>
+          </label>
+        </li>
+        <li>
+          <button className="list-row" onClick={() => go('order')}>
+            <span className="list-text">Reihenfolge im Laden</span><span className="chevron">›</span>
+          </button>
+        </li>
+      </ul>
+      <p className="hint">Gilt für euch beide. Zum Beispiel Freitag als Starttag, wenn ihr freitags einkauft.</p>
 
       <h3 className="section-title">Grundvorrat</h3>
       <ul className="list">
@@ -70,6 +92,41 @@ function MainPage({ go }: { go: (p: Page) => void }) {
           store.leaveHousehold();
         }
       }}>Haushalt verlassen</button>
+    </main>
+  );
+}
+
+// Montag zuerst; Wert im Select ist JS-getDay (0 = Sonntag)
+const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+
+/** Abteilungen per Pfeil in die Laufreihenfolge des eigenen Supermarkts bringen. */
+function OrderPage() {
+  const order = settingsOf(useStore()).category_order;
+  const cats = orderedCategories(order);
+
+  const move = (index: number, delta: number) => {
+    const names = cats.map((c) => c.name);
+    const [moved] = names.splice(index, 1);
+    names.splice(index + delta, 0, moved);
+    store.updateSettings({ category_order: names });
+  };
+
+  return (
+    <main className="content">
+      <p className="hint">So, wie ihr durch euren Laden lauft. In dieser Reihenfolge erscheinen die Artikel auf der Einkaufsliste.</p>
+      <ul className="list">
+        {cats.map((c, i) => (
+          <li key={c.key} className="list-row">
+            <span className="order-n">{i + 1}</span>
+            <span className="list-text">{c.emoji} {c.name}</span>
+            <button className="icon-btn order-btn" aria-label={`${c.name} nach oben`} disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
+            <button className="icon-btn order-btn" aria-label={`${c.name} nach unten`} disabled={i === cats.length - 1} onClick={() => move(i, 1)}>↓</button>
+          </li>
+        ))}
+      </ul>
+      {order.length > 0 && (
+        <button className="danger-row" onClick={() => store.updateSettings({ category_order: [] })}>Standard-Reihenfolge</button>
+      )}
     </main>
   );
 }

@@ -58,3 +58,33 @@ describe('Abteilungen', () => {
   });
   it('liefert Emojis', () => expect(emojiFor('Bananen')).toBe('🍌'));
 });
+
+describe('Wochenstart', async () => {
+  const { startOfWeek, dayKey } = await import('../components/WeekPlan');
+  const mo = new Date(2026, 9, 19); // Montag, 19.10.2026
+  it.each([
+    [1, mo, '2026-10-19'],                      // Montag-Woche, Montag
+    [1, new Date(2026, 9, 25), '2026-10-19'],   // Montag-Woche, Sonntag
+    [5, mo, '2026-10-16'],                      // Freitag-Woche, Montag → letzter Freitag
+    [5, new Date(2026, 9, 23), '2026-10-23'],   // Freitag-Woche, Freitag
+    [0, mo, '2026-10-18'],                      // Sonntag-Woche
+  ])('Start %i für %s', (first, date, expected) => {
+    expect(dayKey(startOfWeek(date as Date, first as number))).toBe(expected);
+  });
+});
+
+describe('Laufreihenfolge', async () => {
+  const { orderedCategories, openByCategory } = await import('./store');
+  it('nutzt die eigene Reihenfolge, Rest hinten', () => {
+    const names = orderedCategories(['Obst & Gemüse', 'Brot & Backwaren', 'Nudeln, Reis & Konserven']).map((c) => c.name);
+    expect(names.slice(0, 4)).toEqual(['Obst & Gemüse', 'Brot & Backwaren', 'Nudeln, Reis & Konserven', 'Milch & Käse']);
+    expect(names).toHaveLength(11);
+  });
+  it('sortiert die Liste entsprechend', () => {
+    const item = (name: string, category: string) => ({ id: name, household_id: 'h', name, quantity: '', note: '', category,
+      checked: false, checked_at: null, source: '', created_at: '', updated_at: '' });
+    const groups = openByCategory([item('Milch', 'Milch & Käse'), item('Nudeln', 'Nudeln, Reis & Konserven')],
+      ['Nudeln, Reis & Konserven']);
+    expect(groups.map((g) => g.category.name)).toEqual(['Nudeln, Reis & Konserven', 'Milch & Käse']);
+  });
+});
