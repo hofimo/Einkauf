@@ -56,6 +56,20 @@ export async function disablePush(householdId: string): Promise<void> {
   await sub.unsubscribe();
 }
 
+/** Schickt eine Test-Nachricht an alle Geräte des Haushalts, auch an dieses. Gibt die Anzahl zurück. */
+export async function sendTestPush(householdId: string): Promise<number> {
+  const headers: Record<string, string> = { apikey: SUPABASE_KEY, 'x-household-id': householdId, 'Content-Type': 'application/json' };
+  if (SUPABASE_KEY.startsWith('eyJ')) headers.Authorization = `Bearer ${SUPABASE_KEY}`;
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ title: 'Einkauf 🛒', body: 'Test erfolgreich – Push-Nachrichten funktionieren!', exclude: '' }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Fehler ${res.status}`);
+  return data.sent ?? 0;
+}
+
 /** Benachrichtigt die anderen Geräte. Fehler sind egal – Push ist ein Extra. */
 export async function notifyOthers(householdId: string, title: string, body: string): Promise<void> {
   try {

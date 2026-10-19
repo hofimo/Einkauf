@@ -1,6 +1,6 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { disablePush, enablePush, pushStatus, type PushStatus } from '../lib/push';
+import { disablePush, enablePush, pushStatus, sendTestPush, type PushStatus } from '../lib/push';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { orderedCategories, settingsOf, store, useStore } from '../lib/store';
 import { TopBar } from './ui';
@@ -115,6 +115,22 @@ function PushRow() {
   const { householdId, member } = useStore();
   const [status, setStatus] = useState<PushStatus | 'busy'>('busy');
   const [error, setError] = useState<string | null>(null);
+  const [testInfo, setTestInfo] = useState<string | null>(null);
+
+  const test = async () => {
+    if (!householdId) return;
+    setError(null);
+    setTestInfo('Wird gesendet …');
+    try {
+      const sent = await sendTestPush(householdId);
+      setTestInfo(sent > 0
+        ? `An ${sent} ${sent === 1 ? 'Gerät' : 'Geräte'} gesendet. Kommt gleich oben als Mitteilung.`
+        : 'Kein Gerät angemeldet – Push erst einschalten.');
+    } catch (e) {
+      setTestInfo(null);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   useEffect(() => {
     pushStatus().then(setStatus, () => setStatus('unsupported'));
@@ -160,6 +176,10 @@ function PushRow() {
         <span className={status === 'on' ? 'on-text' : status === 'off' ? 'link' : 'muted-text'}>{text[status]}</span>
       </button>
       {help[status] && <p className="hint small-pad">{help[status]}</p>}
+      {status === 'on' && (
+        <button className="list-row link" onClick={test}>Test-Nachricht an mich senden</button>
+      )}
+      {testInfo && <p className="hint small-pad">{testInfo}</p>}
       {error && <p className="error small-pad">{error}</p>}
     </>
   );
