@@ -50,8 +50,10 @@ describe('Mengen', () => {
 
 describe('Abteilungen', () => {
   it.each([
-    ['Reis', 'Nudeln, Reis & Konserven'], ['Eier', 'Milch & Käse'], ['Tomatenmark', 'Nudeln, Reis & Konserven'],
+    ['Reis', 'Nudeln, Reis & Konserven'], ['Tomatenmark', 'Nudeln, Reis & Konserven'],
     ['Weintrauben', 'Obst & Gemüse'], ['Eistee', 'Getränke'], ['Klopapier', 'Drogerie & Haushalt'],
+    ['Salami', 'Wurst'], ['Putenschinken', 'Wurst'], ['Fleischwurst', 'Wurst'], ['Bacon', 'Wurst'],
+    ['Eier', 'Eier'], ['Hackfleisch', 'Fleisch & Fisch'], ['Gouda', 'Milch & Käse'],
     ['Hähnchenbrust', 'Fleisch & Fisch'], ['Wassermelone', 'Obst & Gemüse'], ['Irgendwas', 'Sonstiges'],
   ])('%s → %s', (name, cat) => {
     expect(categoryFor(name)).toBe(cat);
@@ -76,9 +78,23 @@ describe('Wochenstart', async () => {
 describe('Laufreihenfolge', async () => {
   const { orderedCategories, openByCategory } = await import('./store');
   it('nutzt die eigene Reihenfolge, Rest hinten', () => {
-    const names = orderedCategories(['Obst & Gemüse', 'Brot & Backwaren', 'Nudeln, Reis & Konserven']).map((c) => c.name);
-    expect(names.slice(0, 4)).toEqual(['Obst & Gemüse', 'Brot & Backwaren', 'Nudeln, Reis & Konserven', 'Milch & Käse']);
-    expect(names).toHaveLength(11);
+    const names = orderedCategories(['Brot & Backwaren', 'Obst & Gemüse']).map((c) => c.name);
+    expect(names[0]).toBe('Brot & Backwaren');
+    expect(names.indexOf('Obst & Gemüse')).toBeGreaterThan(0);
+    expect(names.indexOf('Fleisch & Fisch')).toBe(names.indexOf('Obst & Gemüse') + 1);
+    expect(names).toHaveLength(13);
+  });
+  it('Standard ist die Aldi-Reihenfolge', () => {
+    expect(orderedCategories([]).map((c) => c.name)).toEqual([
+      'Obst & Gemüse', 'Fleisch & Fisch', 'Eier', 'Brot & Backwaren', 'Nudeln, Reis & Konserven', 'Süßes & Snacks',
+      'Getränke', 'Drogerie & Haushalt', 'Milch & Käse', 'Wurst', 'Gewürze & Backen', 'Tiefkühl', 'Sonstiges']);
+  });
+  it('fügt neue Abteilungen in eine alte gespeicherte Reihenfolge ein', () => {
+    const old = ['Obst & Gemüse', 'Brot & Backwaren', 'Nudeln, Reis & Konserven', 'Milch & Käse', 'Fleisch & Fisch',
+      'Gewürze & Backen', 'Tiefkühl', 'Süßes & Snacks', 'Getränke', 'Drogerie & Haushalt', 'Sonstiges'];
+    const names = orderedCategories(old).map((c) => c.name);
+    expect(names.indexOf('Wurst')).toBe(names.indexOf('Milch & Käse') + 1);
+    expect(names.indexOf('Eier')).toBe(names.indexOf('Fleisch & Fisch') + 1);
   });
   it('sortiert die Liste entsprechend', () => {
     const item = (name: string, category: string) => ({ id: name, household_id: 'h', name, quantity: '', note: '', category,

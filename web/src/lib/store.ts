@@ -231,6 +231,18 @@ class Store {
     this.remove('staples', staple.id);
   }
 
+  /**
+   * Seit es "Eier" und "Wurst" als eigene Abteilungen gibt: Einträge, die vorher automatisch
+   * unter "Milch & Käse" bzw. "Fleisch & Fisch" einsortiert wurden, umziehen.
+   */
+  private moveToNewCategories() {
+    const moved: Record<string, string> = { Eier: 'Milch & Käse', Wurst: 'Fleisch & Fisch' };
+    for (const item of this.state.shopping_items) {
+      const target = categoryFor(item.name);
+      if (moved[target] === item.category) this.save('shopping_items', { ...item, category: target });
+    }
+  }
+
   // ---------------------------------------------------------------- Einstellungen
 
   updateSettings(patch: Partial<Pick<Settings, 'week_start' | 'category_order'>>) {
@@ -306,6 +318,7 @@ class Store {
             if (patch[t]) (patch as Record<string, unknown>)[t] = this.merged(t, patch[t] as Tables[typeof t][]);
           }
           this.set({ ...patch, sync: { kind: 'ok' }, lastSync: now() });
+          if (patch.recipes) this.moveToNewCategories();
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
           this.set({ sync: e instanceof ApiError && e.permanent ? { kind: 'error', message } : { kind: 'offline', message } });
@@ -370,13 +383,19 @@ export function settingsOf(state: State): Settings {
 
 type CategoryInfo = (typeof CATEGORIES)[number];
 
-/** Abteilungen in der gewählten Laufreihenfolge; neue/unbekannte hinten an. */
+/**
+ * Abteilungen in der gewählten Laufreihenfolge. Abteilungen, die in einer gespeicherten
+ * Reihenfolge noch fehlen (z. B. neu hinzugekommene), landen hinter ihrem Vorgänger
+ * aus der Standard-Reihenfolge.
+ */
 export function orderedCategories(order: string[]): CategoryInfo[] {
-  const rank = (c: CategoryInfo) => {
-    const i = order.indexOf(c.name);
-    return i >= 0 ? i : order.length + CATEGORIES.indexOf(c);
-  };
-  return [...CATEGORIES].sort((a, b) => rank(a) - rank(b));
+  const names = order.filter((n) => CATEGORIES.some((c) => c.name === n));
+  CATEGORIES.forEach((c, i) => {
+    if (names.includes(c.name)) return;
+    const before = CATEGORIES.slice(0, i).reverse().find((p) => names.includes(p.name));
+    names.splice(before ? names.indexOf(before.name) + 1 : 0, 0, c.name);
+  });
+  return names.map((n) => CATEGORIES.find((c) => c.name === n)!);
 }
 
 export function openByCategory(items: ShoppingItem[], order: string[] = []): { category: CategoryInfo; items: ShoppingItem[] }[] {

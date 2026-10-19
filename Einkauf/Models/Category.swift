@@ -3,15 +3,17 @@ import Foundation
 /// Abteilungen in der Reihenfolge, in der man typischerweise durch den Supermarkt läuft.
 enum Category: String, CaseIterable, Identifiable, Codable, Sendable {
     case produce = "Obst & Gemüse"
-    case bakery = "Brot & Backwaren"
-    case dairy = "Milch & Käse"
     case meat = "Fleisch & Fisch"
+    case eggs = "Eier"
+    case bakery = "Brot & Backwaren"
     case pantry = "Nudeln, Reis & Konserven"
-    case baking = "Gewürze & Backen"
-    case frozen = "Tiefkühl"
     case sweets = "Süßes & Snacks"
     case drinks = "Getränke"
     case household = "Drogerie & Haushalt"
+    case dairy = "Milch & Käse"
+    case sausage = "Wurst"
+    case baking = "Gewürze & Backen"
+    case frozen = "Tiefkühl"
     case other = "Sonstiges"
 
     var id: String { rawValue }
@@ -22,6 +24,8 @@ enum Category: String, CaseIterable, Identifiable, Codable, Sendable {
         case .bakery: "🥖"
         case .dairy: "🧀"
         case .meat: "🥩"
+        case .eggs: "🥚"
+        case .sausage: "🌭"
         case .pantry: "🍝"
         case .baking: "🧂"
         case .frozen: "🧊"
@@ -69,17 +73,24 @@ enum Catalog {
                 ("milch", "🥛"), ("joghurt", "🥛"), ("jogurt", "🥛"), ("quark", "🥛"), ("sahne", "🥛"),
                 ("schmand", "🥛"), ("crème fraîche", "🥛"), ("creme fraiche", "🥛"), ("butter", "🧈"),
                 ("käse", "🧀"), ("gouda", "🧀"), ("emmentaler", "🧀"), ("mozzarella", "🧀"), ("parmesan", "🧀"),
-                ("feta", "🧀"), ("hirtenkäse", "🧀"), ("frischkäse", "🧀"), ("mascarpone", "🧀"), ("ricotta", "🧀"),
-                ("ei", "🥚"), ("eier", "🥚"), ("margarine", "🧈"), ("skyr", "🥛"), ("kefir", "🥛"),
+                ("feta", "🧀"), ("hirtenkäse", "🧀"), ("frischkäse", "🧀"), ("mascarpone", "🧀"), ("ricotta", "🧀"), ("margarine", "🧈"), ("skyr", "🥛"), ("kefir", "🥛"),
                 ("buttermilch", "🥛"), ("schmelzkäse", "🧀"), ("halloumi", "🧀"), ("hafermilch", "🥛"),
             ]),
             (.meat, [
                 ("fleisch", "🥩"), ("hack", "🥩"), ("rind", "🥩"), ("schwein", "🥩"), ("steak", "🥩"),
                 ("schnitzel", "🥩"), ("hähnchen", "🍗"), ("hühnchen", "🍗"), ("huhn", "🍗"), ("pute", "🍗"),
-                ("chicken", "🍗"), ("wurst", "🌭"), ("würstchen", "🌭"), ("salami", "🍖"), ("schinken", "🥓"),
-                ("speck", "🥓"), ("bacon", "🥓"), ("lachs", "🐟"), ("thunfisch", "🐟"), ("fisch", "🐟"),
-                ("garnele", "🦐"), ("shrimps", "🦐"), ("garnelen", "🦐"), ("aufschnitt", "🥓"), ("gyros", "🥩"),
-                ("tofu", "🧆"), ("lamm", "🥩"), ("bratwurst", "🌭"), ("chorizo", "🌭"), ("kassler", "🥩"),
+                ("chicken", "🍗"), ("lachs", "🐟"), ("thunfisch", "🐟"), ("fisch", "🐟"),
+                ("garnele", "🦐"), ("shrimps", "🦐"), ("garnelen", "🦐"), ("gyros", "🥩"),
+                ("tofu", "🧆"), ("lamm", "🥩"), ("kassler", "🥩"),
+            ]),
+            (.eggs, [
+                ("ei", "🥚"), ("eier", "🥚"), ("bio-eier", "🥚"),
+            ]),
+            (.sausage, [
+                ("wurst", "🌭"), ("würstchen", "🌭"), ("wiener", "🌭"), ("bratwurst", "🌭"), ("fleischwurst", "🌭"),
+                ("leberwurst", "🌭"), ("teewurst", "🌭"), ("lyoner", "🌭"), ("cabanossi", "🌭"), ("chorizo", "🌭"),
+                ("salami", "🍖"), ("mortadella", "🍖"), ("schinken", "🥓"), ("speck", "🥓"), ("bacon", "🥓"),
+                ("aufschnitt", "🥓"), ("wurstaufschnitt", "🥓"),
             ]),
             (.pantry, [
                 ("nudeln", "🍝"), ("spaghetti", "🍝"), ("penne", "🍝"), ("pasta", "🍝"), ("lasagne", "🍝"),

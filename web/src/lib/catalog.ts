@@ -1,15 +1,17 @@
 // Abteilungen in der Reihenfolge, in der man durch den Supermarkt läuft.
 export const CATEGORIES = [
   { key: 'produce', name: 'Obst & Gemüse', emoji: '🥦' },
-  { key: 'bakery', name: 'Brot & Backwaren', emoji: '🥖' },
-  { key: 'dairy', name: 'Milch & Käse', emoji: '🧀' },
   { key: 'meat', name: 'Fleisch & Fisch', emoji: '🥩' },
+  { key: 'eggs', name: 'Eier', emoji: '🥚' },
+  { key: 'bakery', name: 'Brot & Backwaren', emoji: '🥖' },
   { key: 'pantry', name: 'Nudeln, Reis & Konserven', emoji: '🍝' },
-  { key: 'baking', name: 'Gewürze & Backen', emoji: '🧂' },
-  { key: 'frozen', name: 'Tiefkühl', emoji: '🧊' },
   { key: 'sweets', name: 'Süßes & Snacks', emoji: '🍫' },
   { key: 'drinks', name: 'Getränke', emoji: '🧃' },
   { key: 'household', name: 'Drogerie & Haushalt', emoji: '🧻' },
+  { key: 'dairy', name: 'Milch & Käse', emoji: '🧀' },
+  { key: 'sausage', name: 'Wurst', emoji: '🌭' },
+  { key: 'baking', name: 'Gewürze & Backen', emoji: '🧂' },
+  { key: 'frozen', name: 'Tiefkühl', emoji: '🧊' },
   { key: 'other', name: 'Sonstiges', emoji: '🛒' },
 ] as const;
 
@@ -40,17 +42,24 @@ const RAW: [string, [string, string][]][] = [
     ['milch', '🥛'], ['joghurt', '🥛'], ['jogurt', '🥛'], ['quark', '🥛'], ['sahne', '🥛'], ['schmand', '🥛'],
     ['crème fraîche', '🥛'], ['creme fraiche', '🥛'], ['butter', '🧈'], ['käse', '🧀'], ['gouda', '🧀'],
     ['emmentaler', '🧀'], ['mozzarella', '🧀'], ['parmesan', '🧀'], ['feta', '🧀'], ['hirtenkäse', '🧀'],
-    ['frischkäse', '🧀'], ['mascarpone', '🧀'], ['ricotta', '🧀'], ['ei', '🥚'], ['eier', '🥚'],
+    ['frischkäse', '🧀'], ['mascarpone', '🧀'], ['ricotta', '🧀'],
     ['margarine', '🧈'], ['skyr', '🥛'], ['kefir', '🥛'], ['buttermilch', '🥛'], ['schmelzkäse', '🧀'],
     ['halloumi', '🧀'], ['hafermilch', '🥛'],
   ]],
   ['Fleisch & Fisch', [
     ['fleisch', '🥩'], ['hack', '🥩'], ['rind', '🥩'], ['schwein', '🥩'], ['steak', '🥩'], ['schnitzel', '🥩'],
-    ['hähnchen', '🍗'], ['hühnchen', '🍗'], ['huhn', '🍗'], ['pute', '🍗'], ['chicken', '🍗'], ['wurst', '🌭'],
-    ['würstchen', '🌭'], ['salami', '🍖'], ['schinken', '🥓'], ['speck', '🥓'], ['bacon', '🥓'], ['lachs', '🐟'],
+    ['hähnchen', '🍗'], ['hühnchen', '🍗'], ['huhn', '🍗'], ['pute', '🍗'], ['chicken', '🍗'], ['lachs', '🐟'],
     ['thunfisch', '🐟'], ['fisch', '🐟'], ['garnele', '🦐'], ['shrimps', '🦐'], ['garnelen', '🦐'],
-    ['aufschnitt', '🥓'], ['gyros', '🥩'], ['tofu', '🧆'], ['lamm', '🥩'], ['bratwurst', '🌭'], ['chorizo', '🌭'],
-    ['kassler', '🥩'],
+    ['gyros', '🥩'], ['tofu', '🧆'], ['lamm', '🥩'], ['kassler', '🥩'],
+  ]],
+  ['Eier', [
+    ['ei', '🥚'], ['eier', '🥚'], ['bio-eier', '🥚'],
+  ]],
+  ['Wurst', [
+    ['wurst', '🌭'], ['würstchen', '🌭'], ['wiener', '🌭'], ['bratwurst', '🌭'], ['fleischwurst', '🌭'],
+    ['leberwurst', '🌭'], ['teewurst', '🌭'], ['lyoner', '🌭'], ['cabanossi', '🌭'], ['chorizo', '🌭'],
+    ['salami', '🍖'], ['mortadella', '🍖'], ['schinken', '🥓'], ['speck', '🥓'], ['bacon', '🥓'],
+    ['aufschnitt', '🥓'], ['wurstaufschnitt', '🥓'],
   ]],
   ['Nudeln, Reis & Konserven', [
     ['nudeln', '🍝'], ['spaghetti', '🍝'], ['penne', '🍝'], ['pasta', '🍝'], ['lasagne', '🍝'],
