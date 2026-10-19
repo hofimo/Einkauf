@@ -79,7 +79,35 @@ export interface Settings {
   updated_at: string;
 }
 
-export type Table = 'shopping_items' | 'recipes' | 'meal_plan' | 'staples' | 'settings';
+/** Ein Gericht im Gerichte-Match-Stapel */
+export interface MatchDish {
+  id: string;
+  household_id: string;
+  round_id: string;
+  source: 'chefkoch' | 'recipe';
+  /** Chefkoch-ID bzw. ID eines eigenen Rezepts */
+  ref_id: string;
+  title: string;
+  image_url: string | null;
+  /** z. B. "30 Min. · ★ 4,7" */
+  info: string;
+  /** eingeplant oder verworfen */
+  done: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MatchVote {
+  id: string;
+  household_id: string;
+  dish_id: string;
+  member: string;
+  liked: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type Table = 'shopping_items' | 'recipes' | 'meal_plan' | 'staples' | 'settings' | 'match_dishes' | 'match_votes';
 
 export interface Tables {
   shopping_items: ShoppingItem;
@@ -87,6 +115,8 @@ export interface Tables {
   meal_plan: MealPlanEntry;
   staples: Staple;
   settings: Settings;
+  match_dishes: MatchDish;
+  match_votes: MatchVote;
 }
 
 export const uuid = (): string => crypto.randomUUID();

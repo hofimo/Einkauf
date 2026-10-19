@@ -91,6 +91,33 @@ create table if not exists public.push_subscriptions (
 );
 create index if not exists push_subscriptions_household on public.push_subscriptions (household_id);
 
+-- Gerichte-Match: Stapel einer Runde und die Stimmen beider ----------------------
+create table if not exists public.match_dishes (
+  id            uuid primary key default gen_random_uuid(),
+  household_id  uuid not null,
+  round_id      uuid not null,
+  source        text not null,          -- 'chefkoch' oder 'recipe'
+  ref_id        text not null,          -- Chefkoch-ID bzw. Rezept-ID
+  title         text not null,
+  image_url     text,
+  info          text not null default '',
+  done          boolean not null default false,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists match_dishes_household on public.match_dishes (household_id, round_id);
+
+create table if not exists public.match_votes (
+  id            uuid primary key default gen_random_uuid(),
+  household_id  uuid not null,
+  dish_id       uuid not null references public.match_dishes(id) on delete cascade,
+  member        text not null,
+  liked         boolean not null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists match_votes_household on public.match_votes (household_id);
+
 -- Spätere Ergänzungen bestehender Tabellen (idempotent) ---------------------------
 alter table public.shopping_items add column if not exists added_by text not null default '';
 alter table public.settings add column if not exists list_note      text not null default '';
@@ -102,7 +129,7 @@ alter table public.settings add column if not exists shopping_since timestamptz;
 do $$
 declare t text;
 begin
-  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings', 'push_subscriptions'] loop
+  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings', 'push_subscriptions', 'match_dishes', 'match_votes'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists household_access on public.%I', t);
     execute format(

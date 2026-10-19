@@ -34,8 +34,8 @@ async function call(params: Record<string, string>): Promise<any> { // eslint-di
 
 const image = (template: string | undefined, format: string) => (template ? template.replace('<format>', format) : null);
 
-export async function searchChefkoch(query: string): Promise<SearchResult[]> {
-  const data = await call({ action: 'search', q: query });
+export async function searchChefkoch(query: string, offset = 0): Promise<SearchResult[]> {
+  const data = await call({ action: 'search', q: query, offset: String(offset) });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data.results ?? []).map(({ recipe: r }: any) => ({
     id: r.id,

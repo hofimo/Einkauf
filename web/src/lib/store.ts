@@ -3,7 +3,8 @@ import { Api, ApiError } from './api';
 import { categoryFor, CATEGORIES, itemCategory } from './catalog';
 import { DEFAULT_STAPLES, displayName, isStaple, parseIngredient, splitSpoken } from './parser';
 import { combineQuantities, formatQuantity } from './quantity';
-import { now, uuid, type Ingredient, type MealPlanEntry, type Recipe, type ShoppingItem, type Settings, type Staple, type Table, type Tables } from './types';
+import { now, uuid, type Ingredient, type MealPlanEntry, type Recipe, type ShoppingItem, type MatchDish, type MatchVote, type Settings, type Staple, type Table, type Tables } from './types';
+import { isMatch } from './match';
 
 /** Eine noch nicht zum Server übertragene Änderung (Offline-Warteschlange). */
 interface PendingOp {
@@ -28,6 +29,8 @@ export interface State {
   meal_plan: MealPlanEntry[];
   staples: Staple[];
   settings: Settings[];
+  match_dishes: MatchDish[];
+  match_votes: MatchVote[];
   outbox: PendingOp[];
   /** Name der Person an diesem Gerät */
   member: string;
@@ -53,6 +56,8 @@ const empty = (householdId: string | null): State => ({
   meal_plan: [],
   staples: [],
   settings: [],
+  match_dishes: [],
+  match_votes: [],
   outbox: [],
   member: readMember(),
   sync: { kind: 'idle' },
@@ -258,6 +263,66 @@ class Store {
     }
   }
 
+  // ---------------------------------------------------------------- Gerichte-Match
+
+  /**
+   * Neue Runde: alte Gerichte ohne Match fliegen raus (ihre Stimmen löscht die Datenbank mit),
+   * dann kommen die neuen in der gegebenen Reihenfolge dazu.
+   */
+  startRound(dishes: Pick<MatchDish, 'source' | 'ref_id' | 'title' | 'image_url' | 'info'>[]) {
+    const hid = this.state.householdId;
+    if (!hid) return;
+    const stale = this.state.match_dishes.filter((d) => !isMatch(d.id, this.state.match_votes));
+    for (const d of stale) this.remove('match_dishes', d.id);
+    const staleIds = new Set(stale.map((d) => d.id));
+    this.set({ match_votes: this.state.match_votes.filter((v) => !staleIds.has(v.dish_id)) });
+
+    const round = uuid();
+    const base = Date.now();
+    dishes.forEach((d, i) => {
+      const t = new Date(base + i).toISOString(); // Reihenfolge des Stapels
+      this.save('match_dishes', { ...d, id: uuid(), household_id: hid, round_id: round, done: false, created_at: t, updated_at: t });
+    });
+  }
+
+  /** Stimme abgeben. Gibt true zurück, wenn dadurch gerade ein Match entstanden ist. */
+  vote(dish: MatchDish, liked: boolean): boolean {
+    const hid = this.state.householdId;
+    const member = this.state.member.trim();
+    if (!hid || !member) return false;
+    const wasMatch = isMatch(dish.id, this.state.match_votes);
+    const existing = this.state.match_votes.find((v) => v.dish_id === dish.id && v.member === member);
+    this.save('match_votes', existing
+      ? { ...existing, liked }
+      : { id: uuid(), household_id: hid, dish_id: dish.id, member, liked, created_at: now(), updated_at: now() });
+    return !wasMatch && isMatch(dish.id, this.state.match_votes);
+  }
+
+  undoVote(dish: MatchDish) {
+    const member = this.state.member.trim();
+    const existing = this.state.match_votes.find((v) => v.dish_id === dish.id && v.member === member);
+    if (existing) this.remove('match_votes', existing.id);
+  }
+
+  /** Match erledigt (eingeplant oder verworfen). */
+  closeMatch(dish: MatchDish) {
+    this.save('match_dishes', { ...dish, done: true });
+  }
+
+  /** Stimmen und Stapel schneller abgleichen, solange das Match offen ist. */
+  async refreshMatch() {
+    const api = this.api;
+    if (!api) return;
+    await this.syncNow();
+    try {
+      const [dishes, votes] = await Promise.all([api.fetchAll('match_dishes'), api.fetchAll('match_votes')]);
+      if (api.householdId !== this.state.householdId) return;
+      this.set({ match_dishes: this.merged('match_dishes', dishes), match_votes: this.merged('match_votes', votes) });
+    } catch {
+      // offline – beim nächsten Mal
+    }
+  }
+
   // ---------------------------------------------------------------- Einstellungen
 
   setMember(name: string) {
@@ -346,12 +411,14 @@ class Store {
             patch.staples = this.merged('staples', await api.fetchAll('staples'));
             // Fehlt die Tabelle noch (schema.sql nicht erneut ausgeführt), läuft der Rest trotzdem
             patch.settings = this.merged('settings', await api.fetchAll('settings').catch(() => this.state.settings));
+            patch.match_dishes = this.merged('match_dishes', await api.fetchAll('match_dishes').catch(() => this.state.match_dishes));
+            patch.match_votes = this.merged('match_votes', await api.fetchAll('match_votes').catch(() => this.state.match_votes));
             this.lastFullSync = Date.now();
           }
           // Haushalt gewechselt, während wir geladen haben? Dann verwerfen.
           if (api.householdId !== this.state.householdId) return;
           // Während des Ladens entstandene lokale Änderungen erneut darüberlegen
-          for (const t of ['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings'] as const) {
+          for (const t of ['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings', 'match_dishes', 'match_votes'] as const) {
             if (patch[t]) (patch as Record<string, unknown>)[t] = this.merged(t, patch[t] as Tables[typeof t][]);
           }
           this.set({ ...patch, sync: { kind: 'ok' }, lastSync: now() });

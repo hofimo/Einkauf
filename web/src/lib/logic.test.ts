@@ -137,3 +137,39 @@ describe('Kochmodus', async () => {
     expect(formatTime(3725)).toBe('1:02:05');
   });
 });
+
+describe('Gerichte-Match', async () => {
+  const m = await import('./match');
+  const dish = (id: string, round: string, t: string) => ({ id, household_id: 'h', round_id: round, source: 'chefkoch' as const,
+    ref_id: id, title: id, image_url: null, info: '', done: false, created_at: t, updated_at: t });
+  const vote = (dish_id: string, member: string, liked: boolean) => ({ id: `${dish_id}-${member}`, household_id: 'h', dish_id, member, liked,
+    created_at: '', updated_at: '' });
+  const dishes = [dish('alt', 'r1', '2026-10-01'), dish('a', 'r2', '2026-10-19T10:00'), dish('b', 'r2', '2026-10-19T10:00'), dish('c', 'r2', '2026-10-19T10:00')];
+  const votes = [vote('a', 'Timo', true), vote('a', 'Sarah', true), vote('b', 'Timo', true), vote('b', 'Sarah', false), vote('c', 'Sarah', true)];
+
+  it('Stapel enthält nur die aktuelle Runde ohne eigene Stimmen', () => {
+    expect(m.deckFor(dishes, votes, 'Timo').map((d) => d.id)).toEqual(['c']);
+    expect(m.deckFor(dishes, votes, 'Neu').map((d) => d.id)).toEqual(['a', 'b', 'c']);
+  });
+  it('Match nur, wenn zwei verschiedene Personen mögen', () => {
+    expect(m.openMatches(dishes, votes).map((d) => d.id)).toEqual(['a']);
+    expect(m.isMatch('c', [...votes, vote('c', 'Sarah', true)])).toBe(false);
+    expect(m.isMatch('c', [...votes, vote('c', 'Timo', true)])).toBe(true);
+  });
+  it('erledigte Matches verschwinden', () => {
+    expect(m.openMatches(dishes.map((d) => (d.id === 'a' ? { ...d, done: true } : d)), votes)).toEqual([]);
+  });
+  it('zeigt den Fortschritt der anderen', () => {
+    expect(m.othersProgress(dishes, votes, 'Timo')).toEqual({ Sarah: 3 });
+  });
+});
+
+describe('Stapel-Filter', () => {
+  it('erkennt Nicht-Hauptgerichte', async () => {
+    const { NOT_A_MEAL: re } = await import('./matchDeck');
+    for (const t of ['Der unglaublich cremige NY Cheese Cake', 'Apfelkuchen vom Blech', 'Schoko-Mousse', 'Leichte Thunfisch - Creme', 'Erdbeer-Eis', 'Himbeertraum'])
+      expect(re.test(t), t).toBe(true);
+    for (const t of ['Nudeln in leichter, sämiger Thunfisch-Tomaten-Käse Sauce', 'Eierpfannekuchen für eine Person', 'Cremige Tomatensuppe', 'Reis mit Gemüse', 'Kaiserschmarrn', 'Kartoffel-Creme-Suppe'])
+      expect(re.test(t), t).toBe(false);
+  });
+});

@@ -7,6 +7,7 @@ Gemeinsame Einkaufsliste mit Wochenplaner für zwei (oder mehr) iPhones, ähnlic
 - **Einkaufsmodus** für den Laden: große Kacheln, Fortschrittsbalken, Bildschirm bleibt an. Der/die andere bekommt eine Push-Nachricht („Timo ist einkaufen“), und was dann noch eingetragen wird, erscheint im Laden als „neu“.
 - **Kochmodus:** Rezept Schritt für Schritt in großer Schrift, Zutaten pro Schritt, Timer aus dem Text („20 Minuten“) zum Antippen.
 - **Wer hat was eingetragen:** Kürzel auf den Einträgen der anderen, 🎙 für Siri/Alexa. **Notiz an die Liste** („Bitte die Bio-Eier!“).
+- **Gerichte-Match 💚:** Wie Tinder fürs Abendessen. Ihr wischt beide denselben Stapel (eigene Rezepte + Chefkoch, Thema wählbar); was ihr beide mögt, wird ein Match und lässt sich mit einem Tipp einplanen. Zu finden im Wochenplan.
 - **Kachel- oder Listenansicht**, jede Abteilung mit eigener Farbe.
 - **Live-Abgleich** zwischen beiden Handys (alle 5 Sekunden). Ohne Netz wird gespeichert und später nachgereicht.
 - **Siri:** „Hey Siri, Einkauf“ → „Was soll auf die Einkaufsliste?“ → „Brot und zwei Liter Milch“

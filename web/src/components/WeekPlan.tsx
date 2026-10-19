@@ -4,6 +4,8 @@ import { formatQuantity } from '../lib/quantity';
 import { settingsOf, store, useStore } from '../lib/store';
 import type { Recipe } from '../lib/types';
 import { RecipeImage, Sheet, Stepper, TopBar } from './ui';
+import { MatchMode } from './MatchMode';
+import { deckFor, openMatches } from '../lib/match';
 
 // ---------------------------------------------------------------- Datumshilfen
 
@@ -38,7 +40,10 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
   // Wochen relativ zur aktuellen; so passt sich die Ansicht an, wenn der Starttag geändert wird
   const [offset, setOffset] = useState(0);
   const [pickDay, setPickDay] = useState<Date | null>(null);
+  const [matching, setMatching] = useState(false);
   const today = dayKey(new Date());
+  const matchCount = openMatches(state.match_dishes, state.match_votes).length;
+  const toSwipe = deckFor(state.match_dishes, state.match_votes, state.member.trim()).length;
   const thisWeek = offset === 0;
   const weekStart = useMemo(() => addDays(startOfWeek(new Date(), firstDay), offset * 7), [firstDay, offset]);
 
@@ -58,6 +63,16 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
         right={<button className="icon-btn" aria-label="Nächste Woche" onClick={() => setOffset(offset + 1)}>›</button>}
       />
       <main className="content">
+        <button className="match-entry" onClick={() => setMatching(true)}>
+          <span className="match-entry-icon">💚</span>
+          <span className="match-entry-text">
+            <strong>Gerichte-Match</strong>
+            <small>{matchCount > 0 ? `${matchCount} ${matchCount === 1 ? 'Match' : 'Matches'} zum Einplanen`
+              : toSwipe > 0 ? `${toSwipe} Gerichte warten auf dich` : 'Was essen wir? Gemeinsam wischen'}</small>
+          </span>
+          {(matchCount > 0 || toSwipe > 0) && <span className="seg-badge">{matchCount || toSwipe}</span>}
+          <span className="chevron">›</span>
+        </button>
         {!thisWeek && (
           <button className="link center" onClick={() => setOffset(0)}>Zur aktuellen Woche</button>
         )}
@@ -96,6 +111,7 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
         })}
       </main>
       {pickDay && <RecipePicker day={pickDay} onClose={() => setPickDay(null)} />}
+      {matching && <MatchMode onClose={() => setMatching(false)} />}
     </>
   );
 }
@@ -156,11 +172,13 @@ function RecipePicker({ day, onClose }: { day: Date; onClose: () => void }) {
  * Tag und Portionen wählen, Zutaten prüfen, auf die Einkaufsliste übernehmen.
  * Grundvorrat (Salz, Pfeffer …) ist vorab abgewählt.
  */
-export function PlanRecipeSheet({ recipe, servings: initialServings, day: fixedDay, onClose }: {
+export function PlanRecipeSheet({ recipe, servings: initialServings, day: fixedDay, onClose, onPlanned }: {
   recipe: Recipe;
   servings: number;
   day?: Date;
   onClose: () => void;
+  /** wird nach dem Einplanen aufgerufen (nicht beim Abbrechen) */
+  onPlanned?: () => void;
 }) {
   useStore();
   const [servings, setServings] = useState(initialServings);
@@ -179,6 +197,7 @@ export function PlanRecipeSheet({ recipe, servings: initialServings, day: fixedD
   const commit = () => {
     store.addPlanEntry(day, recipe.title, recipe, servings);
     if (toList) store.addIngredients(recipe.ingredients.filter((i) => selected.has(i.id)), scale, recipe.title);
+    onPlanned?.();
     onClose();
   };
 
