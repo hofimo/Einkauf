@@ -29,10 +29,9 @@ const DECK_SIZE = 20;
 const MAX_SAME_START = 3;
 
 // Keine Kuchen, Desserts, Getränke oder Aufstriche im Abendessen-Stapel
-export const NOT_A_MEAL = /(?<!pfann|pfanne)kuchen|torte|cake|muffin|cookie|keks|plätzchen|dessert|pudding|mousse|tiramisu|waffel|smoothie|shake|likör|cocktail|marmelade|konfitüre|aufstrich|\bdip\b|brötchen|creme\s*$|\beis\b|eiscreme|pralinen|tarte au|traum\b|parfait|crumble|trifle|quarkspeise|grütze|kompott|sorbet|panna cotta/i;
+export const NOT_A_MEAL = /(?<!pfann|pfanne)kuchen|torte|cake|muffin|cookie|keks|plätzchen|dessert|pudding|mousse|tiramisu|waffel|smoothie|shake|likör|cocktail|marmelade|konfitüre|aufstrich|\bdip\b|brötchen|creme\s*$|\beis\b|eiscreme|pralinen|tarte au|traum\b|parfait|crumble|trifle|quarkspeise|grütze|kompott|sorbet|panna cotta|marinade|dressing|vinaigrette|gewürzmischung|gewürzsalz/i;
 
 const firstWord = (title: string) => title.toLowerCase().split(/[\s-]+/)[0];
-const OWN_MAX = 5;
 
 function shuffle<T>(list: T[]): T[] {
   const a = [...list];
@@ -55,20 +54,18 @@ function fromChefkoch(r: SearchResult): DeckInput {
 }
 
 /**
- * Stellt einen Stapel zusammen: bis zu 5 eigene Rezepte (die länger nicht dran waren)
- * und gut bewertete Chefkoch-Rezepte passend zum Thema, gemischt.
+ * Stellt einen Stapel mit neuen Ideen zusammen: gut bewertete Chefkoch-Rezepte zum Thema,
+ * die noch nicht in euren Rezepten sind.
  */
-export async function buildDeck(theme: Theme, recipes: Recipe[], recentlyPlanned: Set<string>): Promise<DeckInput[]> {
-  const own: DeckInput[] = shuffle(recipes.filter((r) => !recentlyPlanned.has(r.id)))
-    .slice(0, OWN_MAX)
-    .map((r) => ({ source: 'recipe', ref_id: r.id, title: r.title, image_url: r.image_url, info: 'Unser Rezept' }));
+export async function buildDeck(theme: Theme, recipes: Recipe[]): Promise<DeckInput[]> {
   const ownChefkoch = new Set(recipes.map((r) => r.chefkoch_id).filter(Boolean));
+  const ownTitles = new Set(recipes.map((r) => r.title.trim().toLowerCase()));
 
-  const wanted = DECK_SIZE - own.length;
+  const wanted = DECK_SIZE;
   const seen = new Set<string>();
   const found: SearchResult[] = [];
   const fits = (r: SearchResult) =>
-    !seen.has(r.id) && !ownChefkoch.has(r.id) && !r.premium && Boolean(r.image) && r.votes >= 5 && r.rating >= 3.8
+    !seen.has(r.id) && !ownChefkoch.has(r.id) && !ownTitles.has(r.title.trim().toLowerCase()) && !r.premium && Boolean(r.image) && r.votes >= 5 && r.rating >= 3.8
     && !NOT_A_MEAL.test(r.title) && !theme.exclude?.test(r.title);
   const starts = new Map<string, number>();
 
@@ -92,6 +89,6 @@ export async function buildDeck(theme: Theme, recipes: Recipe[], recentlyPlanned
       }
     }
   }
-  if (found.length === 0 && own.length === 0) throw new Error('Keine Gerichte gefunden – bitte nochmal versuchen.');
-  return shuffle([...own, ...found.map(fromChefkoch)]);
+  if (found.length === 0) throw new Error('Keine Gerichte gefunden – bitte nochmal versuchen.');
+  return shuffle(found.map(fromChefkoch));
 }

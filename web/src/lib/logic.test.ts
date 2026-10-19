@@ -167,7 +167,7 @@ describe('Gerichte-Match', async () => {
 describe('Stapel-Filter', () => {
   it('erkennt Nicht-Hauptgerichte', async () => {
     const { NOT_A_MEAL: re } = await import('./matchDeck');
-    for (const t of ['Der unglaublich cremige NY Cheese Cake', 'Apfelkuchen vom Blech', 'Schoko-Mousse', 'Leichte Thunfisch - Creme', 'Erdbeer-Eis', 'Himbeertraum'])
+    for (const t of ['Der unglaublich cremige NY Cheese Cake', 'Apfelkuchen vom Blech', 'Schoko-Mousse', 'Leichte Thunfisch - Creme', 'Erdbeer-Eis', 'Himbeertraum', 'Grill - Marinade', 'Honig-Senf-Dressing'])
       expect(re.test(t), t).toBe(true);
     for (const t of ['Nudeln in leichter, sämiger Thunfisch-Tomaten-Käse Sauce', 'Eierpfannekuchen für eine Person', 'Cremige Tomatensuppe', 'Reis mit Gemüse', 'Kaiserschmarrn', 'Kartoffel-Creme-Suppe'])
       expect(re.test(t), t).toBe(false);

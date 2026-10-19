@@ -673,8 +673,9 @@ section:first-child .section-title { margin-top: 6px; }
 .match-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .match-body small { color: var(--muted); }
 .match-body .button-row { margin-top: auto; }
-.match-body .button-row .primary { flex: 3; padding: 10px; }
-.match-body .button-row .secondary { flex: 1; padding: 10px; }
+.match-actions { align-items: center; gap: 6px; }
+.match-actions .primary, .match-actions .secondary { flex: 1; padding: 9px 6px; font-size: 14px; }
+.match-actions .icon-btn { flex: none; }
 .match-pop { gap: 12px; }
 .match-heart { font-size: 64px; animation: tileIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.6); }
 .match-pop-img { width: 100%; aspect-ratio: 3 / 2; border-radius: 14px; font-size: 40px; }

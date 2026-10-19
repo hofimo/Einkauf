@@ -19,8 +19,15 @@ export function MatchMode({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>(() => (matches.length > 0 && deckFor(dishes, votes, member).length === 0 ? 'matches' : 'swipe'));
   const [justMatched, setJustMatched] = useState<MatchDish | null>(null);
   const [planning, setPlanning] = useState<{ recipe: Recipe; dish: MatchDish } | null>(null);
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
   // Während das Match offen ist, Stimmen alle 5 Sekunden abgleichen
   useEffect(() => {
@@ -31,31 +38,46 @@ export function MatchMode({ onClose }: { onClose: () => void }) {
 
   const onMatch = (dish: MatchDish) => {
     setJustMatched(dish);
-    if (householdId) void notifyOthers(householdId, '💚 Match!', `Ihr habt beide Lust auf ${dish.title}. Jetzt einplanen?`);
+    if (householdId) void notifyOthers(householdId, '💚 Match!', `Ihr habt beide Lust auf ${dish.title}. Jetzt übernehmen?`);
   };
 
+  /** Rezept in "Unsere Rezepte" aufnehmen (falls noch nicht da) und zurückgeben. */
+  const ensureRecipe = async (dish: MatchDish): Promise<Recipe | null> => {
+    if (dish.source === 'recipe') return state.recipes.find((r) => r.id === dish.ref_id) ?? null;
+    const saved = state.recipes.find((r) => r.chefkoch_id === dish.ref_id);
+    if (saved) return saved;
+    const recipe = draftToRecipe(await loadChefkoch(dish.ref_id), householdId!);
+    store.saveRecipe(recipe);
+    return recipe;
+  };
+
+  /** Option 1: nur als Rezept übernehmen */
+  const takeOver = async (dish: MatchDish) => {
+    setError(null);
+    setBusy(dish.id);
+    try {
+      if (!(await ensureRecipe(dish))) throw new Error('Dieses Rezept gibt es nicht mehr.');
+      store.closeMatch(dish);
+      setToast(`📖 „${dish.title}“ ist jetzt in euren Rezepten.`);
+    } catch (e) {
+      setError(`Rezept konnte nicht übernommen werden: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Option 2: übernehmen und gleich einplanen */
   const plan = async (dish: MatchDish) => {
     setError(null);
-    if (dish.source === 'recipe') {
-      const recipe = state.recipes.find((r) => r.id === dish.ref_id);
-      if (recipe) setPlanning({ recipe, dish });
-      else setError('Dieses Rezept gibt es nicht mehr.');
-      return;
-    }
-    const saved = state.recipes.find((r) => r.chefkoch_id === dish.ref_id);
-    if (saved) {
-      setPlanning({ recipe: saved, dish });
-      return;
-    }
-    setLoadingPlan(dish.id);
+    setBusy(dish.id);
     try {
-      const recipe = draftToRecipe(await loadChefkoch(dish.ref_id), householdId!);
-      store.saveRecipe(recipe);
+      const recipe = await ensureRecipe(dish);
+      if (!recipe) throw new Error('Dieses Rezept gibt es nicht mehr.');
       setPlanning({ recipe, dish });
     } catch (e) {
       setError(`Rezept konnte nicht geladen werden: ${e instanceof Error ? e.message : e}`);
     } finally {
-      setLoadingPlan(null);
+      setBusy(null);
     }
   };
 
@@ -92,11 +114,10 @@ export function MatchMode({ onClose }: { onClose: () => void }) {
                 <div className="match-body">
                   <strong>{d.title}</strong>
                   {d.info && <small>{d.info}</small>}
-                  <div className="button-row">
-                    <button className="primary" disabled={loadingPlan === d.id} onClick={() => void plan(d)}>
-                      {loadingPlan === d.id ? '…' : '📅 Einplanen'}
-                    </button>
-                    <button className="secondary" onClick={() => store.closeMatch(d)} aria-label={`${d.title} verwerfen`}>✕</button>
+                  <div className="button-row match-actions">
+                    <button className="secondary" disabled={busy === d.id} onClick={() => void takeOver(d)}>📖 Übernehmen</button>
+                    <button className="primary" disabled={busy === d.id} onClick={() => void plan(d)}>📅 Einplanen</button>
+                    <button className="icon-btn muted" onClick={() => store.closeMatch(d)} aria-label={`${d.title} verwerfen`}>✕</button>
                   </div>
                 </div>
               </div>
@@ -112,11 +133,19 @@ export function MatchMode({ onClose }: { onClose: () => void }) {
             <h2>It's a Match!</h2>
             <RecipeImage src={justMatched.image_url} className="match-pop-img" />
             <p>Ihr habt beide Lust auf <b>{justMatched.title}</b>.</p>
-            <button className="primary wide" onClick={() => { const d = justMatched; setJustMatched(null); void plan(d); }}>📅 Jetzt einplanen</button>
-            <button className="link" onClick={() => setJustMatched(null)}>Weiter wischen</button>
+            <button className="primary wide" onClick={() => { const d = justMatched; setJustMatched(null); void plan(d); }}>
+              📅 Übernehmen &amp; einplanen
+            </button>
+            <button className="secondary wide" onClick={() => { const d = justMatched; setJustMatched(null); void takeOver(d); }}>
+              📖 Als Rezept übernehmen
+            </button>
+            <button className="link" onClick={() => setJustMatched(null)}>Später entscheiden</button>
           </div>
         </div>
       )}
+
+      {busy && !planning && <div className="toast" role="status">Rezept wird geladen …</div>}
+      {toast && <div className="toast" role="status">{toast}</div>}
 
       {planning && (
         <PlanRecipeSheet
@@ -266,10 +295,7 @@ function ThemePicker({ onStarted, onCancel }: { onStarted: () => void; onCancel?
     setBusy(theme.key);
     setError(null);
     try {
-      // Was in den letzten 14 Tagen eingeplant war, nicht schon wieder vorschlagen
-      const since = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
-      const recent = new Set(state.meal_plan.filter((e) => e.day >= since && e.recipe_id).map((e) => e.recipe_id!));
-      const deck = await buildDeck(theme, state.recipes, recent);
+      const deck = await buildDeck(theme, state.recipes);
       store.startRound(deck);
       onStarted();
     } catch (e) {
@@ -282,7 +308,7 @@ function ThemePicker({ onStarted, onCancel }: { onStarted: () => void; onCancel?
   return (
     <main className="theme-picker">
       <h3>Worauf habt ihr Lust?</h3>
-      <p className="muted-text">Wählt ein Thema. Ihr bekommt beide denselben Stapel mit 20 Gerichten – eure eigenen Rezepte und Chefkoch-Ideen.</p>
+      <p className="muted-text">Wählt ein Thema. Ihr bekommt beide denselben Stapel mit 20 neuen Chefkoch-Ideen, die noch nicht in euren Rezepten sind.</p>
       <div className="theme-grid">
         {THEMES.map((t) => (
           <button key={t.key} className="theme-btn" disabled={busy !== null} onClick={() => void start(t)}>

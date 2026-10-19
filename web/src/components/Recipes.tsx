@@ -5,6 +5,8 @@ import { formatQuantity } from '../lib/quantity';
 import { store, useStore } from '../lib/store';
 import { now, uuid, type Ingredient, type Recipe } from '../lib/types';
 import { CookMode } from './CookMode';
+import { MatchMode } from './MatchMode';
+import { deckFor, openMatches } from '../lib/match';
 import { PlanRecipeSheet } from './WeekPlan';
 import { Empty, RecipeImage, Sheet, Stepper, TopBar } from './ui';
 
@@ -31,7 +33,11 @@ export function Recipes({ initialRecipeId }: { initialRecipeId?: string }) {
 }
 
 function RecipeList({ onOpen, onSearch }: { onOpen: (id: string) => void; onSearch: () => void }) {
-  const { recipes } = useStore();
+  const state = useStore();
+  const { recipes } = state;
+  const [matching, setMatching] = useState(false);
+  const matchCount = openMatches(state.match_dishes, state.match_votes).length;
+  const toSwipe = deckFor(state.match_dishes, state.match_votes, state.member.trim()).length;
   const [q, setQ] = useState('');
   const [sheet, setSheet] = useState<'new' | 'import' | null>(null);
 
@@ -54,6 +60,16 @@ function RecipeList({ onOpen, onSearch }: { onOpen: (id: string) => void; onSear
         }
       />
       <main className="content">
+        <button className="match-entry" onClick={() => setMatching(true)}>
+          <span className="match-entry-icon">💚</span>
+          <span className="match-entry-text">
+            <strong>Gerichte-Match</strong>
+            <small>{matchCount > 0 ? `${matchCount} ${matchCount === 1 ? 'Match wartet' : 'Matches warten'} auf euch`
+              : toSwipe > 0 ? `${toSwipe} Gerichte warten auf dich` : 'Neue Rezepte entdecken – gemeinsam wischen'}</small>
+          </span>
+          {(matchCount > 0 || toSwipe > 0) && <span className="seg-badge">{matchCount || toSwipe}</span>}
+          <span className="chevron">›</span>
+        </button>
         <button className="card row-button" onClick={onSearch}>🔎 Auf Chefkoch suchen</button>
         {recipes.length > 0 && (
           <input className="search" type="search" placeholder="Rezept oder Zutat" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -81,6 +97,7 @@ function RecipeList({ onOpen, onSearch }: { onOpen: (id: string) => void; onSear
       </main>
       {sheet === 'new' && <RecipeEditor onClose={() => setSheet(null)} />}
       {sheet === 'import' && <ImportSheet onClose={() => setSheet(null)} onImported={onOpen} />}
+      {matching && <MatchMode onClose={() => setMatching(false)} />}
     </>
   );
 }
