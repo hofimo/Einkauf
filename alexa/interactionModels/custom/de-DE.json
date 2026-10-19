@@ -33,13 +33,25 @@
             {
               "name": "food",
               "type": "AMAZON.Food"
+            },
+            {
+              "name": "foodTwo",
+              "type": "AMAZON.Food"
+            },
+            {
+              "name": "foodThree",
+              "type": "AMAZON.Food"
             }
           ],
           "samples": [
             "{food}",
             "noch {food}",
             "und {food}",
-            "{food} bitte"
+            "{food} bitte",
+            "{food} und {foodTwo}",
+            "noch {food} und {foodTwo}",
+            "{food} {foodTwo} und {foodThree}",
+            "{food} und {foodTwo} und {foodThree}"
           ]
         },
         {

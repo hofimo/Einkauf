@@ -29,7 +29,7 @@ const AddItemIntentHandler = {
     && ['AddItemIntent', 'ItemOnlyIntent'].includes(Alexa.getIntentName(h.requestEnvelope)),
   async handle(h) {
     const text = Alexa.getIntentName(h.requestEnvelope) === 'ItemOnlyIntent'
-      ? Alexa.getSlotValue(h.requestEnvelope, 'food')
+      ? ['food', 'foodTwo', 'foodThree'].map((s) => Alexa.getSlotValue(h.requestEnvelope, s)).filter(Boolean).join(', ')
       : Alexa.getSlotValue(h.requestEnvelope, 'item');
     if (!text) {
       return h.responseBuilder.speak('Was soll ich aufschreiben?').reprompt('Was soll auf die Liste?').getResponse();
