@@ -6,7 +6,7 @@ Gemeinsame Einkaufsliste mit Wochenplaner für zwei (oder mehr) iPhones, ähnlic
 - **Einkaufsliste** als Kacheln, automatisch nach Supermarkt-Abteilungen sortiert. Antippen heißt gekauft, lange drücken öffnet die Bearbeitung, unter „Zuletzt gekauft“ holt ein Tippen den Artikel zurück.
 - **Live-Abgleich** zwischen beiden Handys (alle 5 Sekunden). Ohne Netz wird gespeichert und später nachgereicht.
 - **Siri:** „Hey Siri, Einkauf“ → „Was soll auf die Einkaufsliste?“ → „Brot und zwei Liter Milch“
-- **Alexa:** „Alexa, öffne Einkauf und schreibe Brot auf die Liste“
+- **Alexa:** „Alexa, sag Einkauf, ich brauche Brot“
 - **Rezepte:** Chefkoch durchsuchen, Links von Chefkoch und anderen Rezeptseiten importieren oder eigene Rezepte anlegen.
 - **Eigene Laufreihenfolge:** Die Abteilungen erscheinen in der Reihenfolge eures Supermarkts (*Mehr → Reihenfolge im Laden*).
 - **Wochenplan:** Starttag frei wählbar (z. B. Freitag, wenn ihr freitags einkauft). Gericht für einen Tag einplanen → Zutaten landen passend zur Portionenzahl auf der Liste. Der **Grundvorrat** (Salz, Pfeffer, Öl, Mehl …) wird weggelassen und ist in der App anpassbar.
@@ -94,9 +94,12 @@ Genutzt wird ein **Alexa-hosted Skill**. Er ist kostenlos, braucht kein AWS-Kont
 
 Danach funktioniert auf jedem Echo eures Kontos:
 
-- „Alexa, öffne Einkauf und schreibe Brot auf die Liste“
+- „Alexa, sag Einkauf, ich brauche Brot“
+- „Alexa, öffne Einkauf“ → „Was soll auf die Einkaufsliste?“ → „Brot“ → „Noch etwas?“ → „Käse“ → „Fertig“
 - „Alexa, sag Einkauf, ich brauche Milch und Eier“
 - „Alexa, frag Einkauf, was auf der Liste steht“
+
+Sätze mit **„auf die Liste“** im ersten Satz meiden: Die schnappt sich sonst Alexas eigene Amazon-Einkaufsliste, bevor der Skill gefragt wird.
 
 Lehnt die Konsole den einwortigen Aufrufnamen `einkauf` ab, im JSON `"invocationName"` z. B. auf `"unser einkauf"` ändern.
 

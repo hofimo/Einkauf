@@ -207,7 +207,7 @@ function VoicePage() {
       <p>Optional einen zweiten Kurzbefehl <b>„Was steht auf der Liste“</b> anlegen: wie oben, aber ohne Schritt 2. Die URL endet auf <code>/rpc/list_items</code>, als JSON-Hauptteil reicht ein leeres Feld.</p>
 
       <h3>Alexa</h3>
-      <p>„Alexa, öffne Einkauf und schreibe Brot auf die Liste“ oder „Alexa, frag Einkauf, was auf der Liste steht“.</p>
+      <p>„Alexa, sag Einkauf, ich brauche Brot“, „Alexa, öffne Einkauf“ (dann einfach die Artikel nennen) oder „Alexa, frag Einkauf, was auf der Liste steht“. Sätze mit „auf die Liste“ meiden, die landen sonst auf Amazons eigener Einkaufsliste.</p>
       <p>Einmalig den Skill anlegen (Anleitung im README, Ordner <code>alexa/</code>). Dabei wird dieser Haushalts-Code gebraucht:</p>
       <Copy value={id} />
     </main>

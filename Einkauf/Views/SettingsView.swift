@@ -150,7 +150,7 @@ struct VoiceHelpView: View {
                 Text("Funktioniert sofort nach der Installation, auch auf dem Sperrbildschirm und mit AirPods. In der Kurzbefehle-App findest du die Aktionen unter „Einkauf“.")
             }
             Section {
-                Text("„Alexa, öffne Einkauf und schreibe Brot auf die Liste“")
+                Text("„Alexa, sag Einkauf, ich brauche Brot“")
                 Text("„Alexa, sag Einkauf, ich brauche Milch und Eier“")
                 Text("„Alexa, frag Einkauf, was auf der Liste steht“")
             } header: {

@@ -1,5 +1,32 @@
 // Zugriff auf die Einkaufsliste in Supabase (ohne Alexa-Abhängigkeiten, damit testbar).
 const crypto = require('crypto');
+const https = require('https');
+
+/** Minimaler fetch-Ersatz über das https-Modul (läuft auf jeder Node-Version). */
+function httpRequest(url, { method = 'GET', headers = {}, body } = {}) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, { method, headers }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => resolve({
+        ok: res.statusCode >= 200 && res.statusCode < 300,
+        status: res.statusCode,
+        text: async () => data,
+      }));
+    });
+    req.on('error', reject);
+    req.setTimeout(6000, () => req.destroy(new Error('Zeitüberschreitung')));
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = crypto.randomBytes(1)[0] % 16;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  }));
 
 const NUMBER_WORDS = {
   ein: 1, eine: 1, einen: 1, einem: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, sechs: 6,
@@ -39,7 +66,7 @@ function parseOne(piece) {
 }
 
 class ShoppingList {
-  constructor({ SUPABASE_URL, SUPABASE_KEY, HOUSEHOLD_ID }, fetchImpl = fetch) {
+  constructor({ SUPABASE_URL, SUPABASE_KEY, HOUSEHOLD_ID }, fetchImpl = httpRequest) {
     this.base = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1`;
     this.household = HOUSEHOLD_ID.toLowerCase();
     this.fetch = fetchImpl;
@@ -91,7 +118,7 @@ class ShoppingList {
           method: 'POST',
           headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({
-            id: crypto.randomUUID(),
+            id: uuid(),
             household_id: this.household,
             name,
             quantity,

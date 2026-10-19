@@ -6,7 +6,10 @@
         {
           "name": "AddItemIntent",
           "slots": [
-            { "name": "item", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "item",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "schreibe {item} auf die liste",
@@ -21,9 +24,22 @@
             "wir brauchen {item}",
             "notiere {item}",
             "trage {item} ein",
-            "kaufe {item}",
-            "noch {item}",
-            "und {item}"
+            "kaufe {item}"
+          ]
+        },
+        {
+          "name": "ItemOnlyIntent",
+          "slots": [
+            {
+              "name": "food",
+              "type": "AMAZON.Food"
+            }
+          ],
+          "samples": [
+            "{food}",
+            "noch {food}",
+            "und {food}",
+            "{food} bitte"
           ]
         },
         {
@@ -39,12 +55,35 @@
             "liste vorlesen"
           ]
         },
-        { "name": "AMAZON.HelpIntent", "samples": [] },
-        { "name": "AMAZON.StopIntent", "samples": ["fertig", "das wars", "das war's", "nichts mehr"] },
-        { "name": "AMAZON.CancelIntent", "samples": [] },
-        { "name": "AMAZON.NoIntent", "samples": [] },
-        { "name": "AMAZON.FallbackIntent", "samples": [] },
-        { "name": "AMAZON.NavigateHomeIntent", "samples": [] }
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": [
+            "fertig",
+            "das wars",
+            "das war's",
+            "nichts mehr"
+          ]
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NoIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        }
       ],
       "types": []
     }

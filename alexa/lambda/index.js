@@ -1,27 +1,36 @@
 // Alexa-Skill "Einkauf"
-//   "Alexa, öffne Einkauf und schreibe Brot auf die Liste"
+//   "Alexa, sag Einkauf, ich brauche Brot"
 //   "Alexa, sag Einkauf, ich brauche Milch und Eier"
 //   "Alexa, frag Einkauf, was auf der Liste steht"
 const Alexa = require('ask-sdk-core');
 const config = require('./config');
 const { ShoppingList, joinGerman } = require('./shopping');
 
-const list = new ShoppingList(config);
+// Erst beim ersten Zugriff anlegen: Ein Fehler (z. B. in config.js) landet dann im
+// ErrorHandler und Alexa sagt etwas, statt dass der Skill schon beim Laden abstürzt.
+let listInstance;
+const list = {
+  add: (text) => (listInstance = listInstance || new ShoppingList(config)).add(text),
+  openItems: () => (listInstance = listInstance || new ShoppingList(config)).openItems(),
+};
 const REPROMPT = 'Noch etwas?';
 
 const LaunchRequestHandler = {
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'LaunchRequest',
   handle: (h) => h.responseBuilder
     .speak('Was soll auf die Einkaufsliste?')
-    .reprompt('Sag zum Beispiel: schreibe Brot auf die Liste.')
+    .reprompt('Sag zum Beispiel: Brot und Milch.')
     .getResponse(),
 };
 
 const AddItemIntentHandler = {
+  // ItemOnlyIntent: nur der Artikel ("Brot"), z. B. als Antwort auf "Was soll auf die Einkaufsliste?"
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest'
-    && Alexa.getIntentName(h.requestEnvelope) === 'AddItemIntent',
+    && ['AddItemIntent', 'ItemOnlyIntent'].includes(Alexa.getIntentName(h.requestEnvelope)),
   async handle(h) {
-    const text = Alexa.getSlotValue(h.requestEnvelope, 'item');
+    const text = Alexa.getIntentName(h.requestEnvelope) === 'ItemOnlyIntent'
+      ? Alexa.getSlotValue(h.requestEnvelope, 'food')
+      : Alexa.getSlotValue(h.requestEnvelope, 'item');
     if (!text) {
       return h.responseBuilder.speak('Was soll ich aufschreiben?').reprompt('Was soll auf die Liste?').getResponse();
     }
@@ -69,7 +78,7 @@ const FallbackIntentHandler = {
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest'
     && Alexa.getIntentName(h.requestEnvelope) === 'AMAZON.FallbackIntent',
   handle: (h) => h.responseBuilder
-    .speak('Das habe ich nicht verstanden. Sag zum Beispiel: schreibe Brot auf die Liste.')
+    .speak('Das habe ich nicht verstanden. Sag zum Beispiel: ich brauche Brot.')
     .reprompt('Was soll auf die Liste?')
     .getResponse(),
 };
