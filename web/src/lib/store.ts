@@ -5,6 +5,7 @@ import { DEFAULT_STAPLES, displayName, isStaple, parseIngredient, splitSpoken } 
 import { combineQuantities, formatQuantity } from './quantity';
 import { now, uuid, type Ingredient, type MealPlanEntry, type Recipe, type ShoppingItem, type MatchDish, type MatchVote, type Settings, type Staple, type Table, type Tables } from './types';
 import { isMatch } from './match';
+import { findConflicts, type Conflict } from './intolerance';
 
 /** Eine noch nicht zum Server übertragene Änderung (Offline-Warteschlange). */
 interface PendingOp {
@@ -477,12 +478,18 @@ export function useStore(): State {
 
 // ---------------------------------------------------------------- Abgeleitete Daten
 
+/** Problematische Zutaten eines Rezepts laut den Unverträglichkeiten des Haushalts. */
+export function recipeConflicts(state: State, ingredients: Ingredient[]): Conflict[] {
+  const s = settingsOf(state);
+  return findConflicts(ingredients, s.intolerances, s.avoid_words);
+}
+
 /** Einstellungen des Haushalts (mit Standardwerten, solange noch nichts gespeichert ist). */
 export function settingsOf(state: State): Settings {
   const hid = state.householdId ?? '';
   const defaults: Settings = {
     id: hid, household_id: hid, week_start: 1, category_order: [], list_note: '', list_note_by: '',
-    shopping_by: '', shopping_since: null, created_at: now(), updated_at: now(),
+    shopping_by: '', shopping_since: null, intolerances: [], avoid_words: [], created_at: now(), updated_at: now(),
   };
   const saved = state.settings.find((s) => s.household_id === hid);
   return saved ? { ...defaults, ...saved } : defaults;

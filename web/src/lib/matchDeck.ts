@@ -1,4 +1,5 @@
-import { searchChefkoch, type SearchResult } from './recipes';
+import { loadChefkoch, searchChefkoch, type SearchResult } from './recipes';
+import type { Ingredient } from './types';
 import type { MatchDish, Recipe } from './types';
 
 export type DeckInput = Pick<MatchDish, 'source' | 'ref_id' | 'title' | 'image_url' | 'info'>;
@@ -53,11 +54,17 @@ function fromChefkoch(r: SearchResult): DeckInput {
   };
 }
 
+export interface DeckOptions {
+  /** true = Rezept passt (z. B. keine Zutat, die jemand nicht verträgt). Lädt dafür die Zutaten. */
+  accept?: (ingredients: Ingredient[]) => boolean;
+  onProgress?: (found: number, wanted: number) => void;
+}
+
 /**
  * Stellt einen Stapel mit neuen Ideen zusammen: gut bewertete Chefkoch-Rezepte zum Thema,
- * die noch nicht in euren Rezepten sind.
+ * die noch nicht in euren Rezepten sind (und, falls angegeben, zu den Unverträglichkeiten passen).
  */
-export async function buildDeck(theme: Theme, recipes: Recipe[]): Promise<DeckInput[]> {
+export async function buildDeck(theme: Theme, recipes: Recipe[], options: DeckOptions = {}): Promise<DeckInput[]> {
   const ownChefkoch = new Set(recipes.map((r) => r.chefkoch_id).filter(Boolean));
   const ownTitles = new Set(recipes.map((r) => r.title.trim().toLowerCase()));
 
@@ -78,15 +85,36 @@ export async function buildDeck(theme: Theme, recipes: Recipe[]): Promise<DeckIn
   };
   const extra = THEMES[0].queries.filter((q) => !theme.queries.includes(q));
   const queries = [...shuffle(theme.queries), ...shuffle(extra)];
+  const allowed = (r: SearchResult) => fits(r) && (starts.get(firstWord(r.title)) ?? 0) < MAX_SAME_START;
+  const take = (r: SearchResult) => {
+    seen.add(r.id);
+    starts.set(firstWord(r.title), (starts.get(firstWord(r.title)) ?? 0) + 1);
+    found.push(r);
+    options.onProgress?.(found.length, wanted);
+  };
+
   for (let i = 0; i < queries.length && found.length < wanted; i += 3) {
     const batches = await Promise.all(queries.slice(i, i + 3).map(search));
-    for (const r of batches.flat()) {
-      const start = firstWord(r.title);
-      if (found.length < wanted && fits(r) && (starts.get(start) ?? 0) < MAX_SAME_START) {
-        seen.add(r.id);
-        starts.set(start, (starts.get(start) ?? 0) + 1);
-        found.push(r);
-      }
+    const candidates = batches.flat();
+    if (!options.accept) {
+      for (const r of candidates) if (found.length < wanted && allowed(r)) take(r);
+      continue;
+    }
+    // Zutaten prüfen: jeweils 6 Rezepte gleichzeitig laden
+    for (let j = 0; j < candidates.length && found.length < wanted; j += 6) {
+      const chunk = candidates.slice(j, j + 6).filter(allowed);
+      const checked = await Promise.all(chunk.map(async (r) => {
+        try {
+          const draft = await loadChefkoch(r.id);
+          return options.accept!(draft.ingredients) ? r : null;
+        } catch {
+          return null; // nicht prüfbar → lieber weglassen
+        }
+      }));
+      checked.forEach((r, k) => {
+        if (r && found.length < wanted && allowed(r)) take(r);
+        else if (!r) seen.add(chunk[k].id); // passt nicht – nicht nochmal prüfen
+      });
     }
   }
   if (found.length === 0) throw new Error('Keine Gerichte gefunden – bitte nochmal versuchen.');

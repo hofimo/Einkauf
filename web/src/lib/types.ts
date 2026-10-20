@@ -75,6 +75,10 @@ export interface Settings {
   /** Wer gerade einkaufen ist (Einkaufsmodus) */
   shopping_by: string;
   shopping_since: string | null;
+  /** Unverträglichkeiten, z. B. ["fructose"] (siehe lib/intolerance.ts) */
+  intolerances: string[];
+  /** Eigene Zutaten, die gemieden werden, z. B. ["Zwiebel"] */
+  avoid_words: string[];
   created_at: string;
   updated_at: string;
 }

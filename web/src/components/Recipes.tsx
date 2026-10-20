@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { draftToRecipe, importFromLink, loadChefkoch, searchChefkoch, type Draft, type SearchResult } from '../lib/recipes';
 import { ingredientLine, parseIngredient } from '../lib/parser';
 import { formatQuantity } from '../lib/quantity';
-import { store, useStore } from '../lib/store';
+import { recipeConflicts, store, useStore } from '../lib/store';
+import { conflictSummary } from '../lib/intolerance';
 import { now, uuid, type Ingredient, type Recipe } from '../lib/types';
 import { CookMode } from './CookMode';
 import { MatchMode } from './MatchMode';
@@ -87,6 +88,7 @@ function RecipeList({ onOpen, onSearch }: { onOpen: (id: string) => void; onSear
                   <span className="list-text">
                     <strong>{r.title}</strong>
                     <small>{r.ingredients.length} Zutaten · {r.servings} Portionen</small>
+                    {recipeConflicts(state, r.ingredients).length > 0 && <small className="warn-text">⚠️ {conflictSummary(recipeConflicts(state, r.ingredients))}</small>}
                   </span>
                   <span className="chevron">›</span>
                 </button>
@@ -102,8 +104,21 @@ function RecipeList({ onOpen, onSearch }: { onOpen: (id: string) => void; onSear
   );
 }
 
+/** Warnhinweis, wenn Zutaten gegen eure Unverträglichkeiten sprechen. */
+export function ConflictBanner({ ingredients }: { ingredients: Ingredient[] }) {
+  const conflicts = recipeConflicts(useStore(), ingredients);
+  if (conflicts.length === 0) return null;
+  return (
+    <div className="banner conflict" role="note">
+      <span className="banner-icon">⚠️</span>
+      <span><b>Achtung:</b> {conflictSummary(conflicts)}</span>
+    </div>
+  );
+}
+
 export function IngredientList({ ingredients, scale = 1 }: { ingredients: Ingredient[]; scale?: number }) {
-  useStore(); // Grundvorrat kann sich ändern
+  const state = useStore(); // Grundvorrat und Unverträglichkeiten können sich ändern
+  const conflicts = recipeConflicts(state, ingredients);
   let lastGroup = '';
   return (
     <ul className="ingredients">
@@ -119,6 +134,9 @@ export function IngredientList({ ingredients, scale = 1 }: { ingredients: Ingred
                 {ing.name}
                 {ing.note && <small>{ing.note}</small>}
               </span>
+              {conflicts.some((c) => c.ingredient === ing.name) && (
+                <span className="pill warn">⚠️ {conflicts.find((c) => c.ingredient === ing.name)!.reason}</span>
+              )}
               {store.isStaple(ing) && <span className="pill">Vorrat</span>}
             </div>
           </li>
@@ -147,6 +165,7 @@ function RecipeDetail({ id, onBack }: { id: string; onBack: () => void }) {
       />
       <main className="content">
         {recipe.image_url && <RecipeImage src={recipe.image_url} className="hero" />}
+        <ConflictBanner ingredients={recipe.ingredients} />
         <div className="button-row">
           <button className="primary" onClick={() => setCooking(true)}>👩‍🍳 Jetzt kochen</button>
           <button className="secondary" onClick={() => setPlanning(true)}>📅 Einplanen</button>
@@ -352,6 +371,7 @@ function ChefkochPreview({ result, onBack }: { result: SearchResult; onBack: () 
         {!draft && !error && <div className="spinner" />}
         {draft && (
           <>
+            <ConflictBanner ingredients={draft.ingredients} />
             {saved ? (
               <>
                 <p className="success">✓ In euren Rezepten gespeichert</p>

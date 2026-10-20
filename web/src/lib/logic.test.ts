@@ -173,3 +173,29 @@ describe('Stapel-Filter', () => {
       expect(re.test(t), t).toBe(false);
   });
 });
+
+describe('Unverträglichkeiten', async () => {
+  const { findConflicts, conflictSummary } = await import('./intolerance');
+  const { parseIngredient } = await import('./parser');
+  const ings = (...lines: string[]) => lines.map((l) => parseIngredient(l)!);
+
+  it('findet Fructose-Zutaten', () => {
+    const c = findConflicts(ings('2 Äpfel', '1 EL Honig', '500 g Hackfleisch', '1 Zwiebel'), ['fructose']);
+    expect(c.map((x) => x.ingredient)).toEqual(['Äpfel', 'Honig']);
+    expect(conflictSummary(c)).toBe('Fructose: Äpfel, Honig');
+  });
+  it('beachtet Ausnahmen (laktosefrei, Kokosmilch)', () => {
+    expect(findConflicts(ings('200 ml Milch, laktosefreie', '400 ml Kokosmilch'), ['lactose'])).toEqual([]);
+    expect(findConflicts(ings('200 ml Sahne'), ['lactose']).length).toBe(1);
+  });
+  it('eigene Zutaten', () => {
+    const c = findConflicts(ings('2 Zwiebeln', '1 Knoblauchzehe'), [], ['Zwiebel']);
+    expect(conflictSummary(c)).toBe('Zwiebel: Zwiebeln');
+  });
+  it('keine Fehlalarme bei ähnlichen Wörtern', () => {
+    expect(findConflicts(ings('300 g Mangold', '1 Butternutkürbis', '2 EL Kartoffelmehl'), ['fructose', 'lactose', 'gluten'])).toEqual([]);
+  });
+  it('ohne Auswahl keine Treffer', () => {
+    expect(findConflicts(ings('2 Äpfel'), [])).toEqual([]);
+  });
+});

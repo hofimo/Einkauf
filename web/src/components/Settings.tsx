@@ -1,5 +1,6 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { INTOLERANCES } from '../lib/intolerance';
 import { disablePush, enablePush, pushStatus, sendTestPush, type PushStatus } from '../lib/push';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { orderedCategories, settingsOf, store, useStore } from '../lib/store';
@@ -70,6 +71,8 @@ function MainPage({ go }: { go: (p: Page) => void }) {
         </li>
       </ul>
       <p className="hint">Gilt für euch beide. Zum Beispiel Freitag als Starttag, wenn ihr freitags einkauft.</p>
+
+      <IntolerancesSection />
 
       <h3 className="section-title">Grundvorrat</h3>
       <ul className="list">
@@ -181,6 +184,55 @@ function PushRow() {
       )}
       {testInfo && <p className="hint small-pad">{testInfo}</p>}
       {error && <p className="error small-pad">{error}</p>}
+    </>
+  );
+}
+
+function IntolerancesSection() {
+  const settings = settingsOf(useStore());
+  const [word, setWord] = useState('');
+
+  const toggle = (key: string) => {
+    const has = settings.intolerances.includes(key);
+    store.updateSettings({ intolerances: has ? settings.intolerances.filter((k) => k !== key) : [...settings.intolerances, key] });
+  };
+  const addWord = () => {
+    const w = word.trim();
+    if (!w || settings.avoid_words.some((x) => x.toLowerCase() === w.toLowerCase())) return;
+    store.updateSettings({ avoid_words: [...settings.avoid_words, w] });
+    setWord('');
+  };
+
+  return (
+    <>
+      <h3 className="section-title">Unverträglichkeiten</h3>
+      <ul className="list">
+        {INTOLERANCES.map((i) => (
+          <li key={i.key}>
+            <label className="list-row switch-row">
+              <span className="list-text">{i.emoji} {i.label}</span>
+              <input type="checkbox" role="switch" checked={settings.intolerances.includes(i.key)} onChange={() => toggle(i.key)} />
+            </label>
+          </li>
+        ))}
+        {settings.avoid_words.map((w) => (
+          <li key={w} className="list-row">
+            <span className="list-text">🚫 {w}</span>
+            <button className="icon-btn muted" aria-label={`${w} entfernen`}
+              onClick={() => store.updateSettings({ avoid_words: settings.avoid_words.filter((x) => x !== w) })}>✕</button>
+          </li>
+        ))}
+        <li>
+          <form className="list-row" onSubmit={(e) => { e.preventDefault(); addWord(); }}>
+            <input className="bare" value={word} placeholder="Weitere Zutat meiden, z. B. Zwiebel" onChange={(e) => setWord(e.target.value)} />
+            <button className="link bold" disabled={!word.trim()}>Hinzufügen</button>
+          </form>
+        </li>
+      </ul>
+      <p className="hint">
+        Gerichte-Match schlägt nichts vor, was solche Zutaten enthält, und bei Rezepten erscheint ein Warnhinweis.
+        Die Erkennung läuft über die Zutatennamen und ersetzt keine ärztliche Beratung.
+      </p>
     </>
   );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { displayName } from '../lib/parser';
 import { formatQuantity } from '../lib/quantity';
-import { settingsOf, store, useStore } from '../lib/store';
+import { recipeConflicts, settingsOf, store, useStore } from '../lib/store';
+import { ConflictBanner } from './Recipes';
 import type { Recipe } from '../lib/types';
 import { RecipeImage, Sheet, Stepper, TopBar } from './ui';
 
@@ -164,7 +165,7 @@ export function PlanRecipeSheet({ recipe, servings: initialServings, day: fixedD
   /** wird nach dem Einplanen aufgerufen (nicht beim Abbrechen) */
   onPlanned?: () => void;
 }) {
-  useStore();
+  const conflicts = recipeConflicts(useStore(), recipe.ingredients);
   const [servings, setServings] = useState(initialServings);
   const [day, setDay] = useState(() => dayKey(fixedDay ?? new Date()));
   const [toList, setToList] = useState(true);
@@ -187,6 +188,7 @@ export function PlanRecipeSheet({ recipe, servings: initialServings, day: fixedD
 
   return (
     <Sheet title={recipe.title} onClose={onClose} action={<button className="link bold" onClick={commit}>Einplanen</button>}>
+      <ConflictBanner ingredients={recipe.ingredients} />
       <div className="form-group">
         {!fixedDay && (
           <label>Tag<input type="date" value={day} onChange={(e) => setDay(e.target.value)} /></label>
@@ -208,6 +210,7 @@ export function PlanRecipeSheet({ recipe, servings: initialServings, day: fixedD
                   <button className={`list-row ${on ? '' : 'off'}`} onClick={() => toggle(ing.id)}>
                     <span className={`check ${on ? 'on' : ''}`}>{on ? '✓' : ''}</span>
                     <span className="list-text">{displayName(ing.name)}</span>
+                    {conflicts.some((c) => c.ingredient === ing.name) && <span className="pill warn">⚠️</span>}
                     {store.isStaple(ing) && <span className="pill">Vorrat</span>}
                     <span className="qty">{formatQuantity(ing.amount == null ? null : ing.amount * scale, ing.unit, true)}</span>
                   </button>

@@ -124,6 +124,9 @@ alter table public.settings add column if not exists list_note      text not nul
 alter table public.settings add column if not exists list_note_by   text not null default '';
 alter table public.settings add column if not exists shopping_by    text not null default '';
 alter table public.settings add column if not exists shopping_since timestamptz;
+-- Unverträglichkeiten des Haushalts (z. B. ["fructose"]) und eigene Zutaten, die gemieden werden
+alter table public.settings add column if not exists intolerances   jsonb not null default '[]'::jsonb;
+alter table public.settings add column if not exists avoid_words    jsonb not null default '[]'::jsonb;
 
 -- Row Level Security -----------------------------------------------------------
 do $$

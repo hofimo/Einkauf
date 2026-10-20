@@ -3,7 +3,8 @@ import { currentRound, deckFor, members, openMatches, othersProgress, roundDishe
 import { buildDeck, THEMES, type Theme } from '../lib/matchDeck';
 import { notifyOthers } from '../lib/push';
 import { draftToRecipe, loadChefkoch } from '../lib/recipes';
-import { store, useStore } from '../lib/store';
+import { recipeConflicts, settingsOf, store, useStore } from '../lib/store';
+import { INTOLERANCES } from '../lib/intolerance';
 import type { MatchDish, Recipe } from '../lib/types';
 import { PlanRecipeSheet } from './WeekPlan';
 import { RecipeImage } from './ui';
@@ -289,19 +290,31 @@ function SwipeCard({ dish, depth, onVote }: { dish: MatchDish; depth: number; on
 function ThemePicker({ onStarted, onCancel }: { onStarted: () => void; onCancel?: () => void }) {
   const state = useStore();
   const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const settings = settingsOf(state);
+  const filtering = settings.intolerances.length + settings.avoid_words.length > 0;
+  const filterNames = [
+    ...INTOLERANCES.filter((i) => settings.intolerances.includes(i.key)).map((i) => i.label),
+    ...settings.avoid_words,
+  ];
 
   const start = async (theme: Theme) => {
     setBusy(theme.key);
     setError(null);
+    setProgress(filtering ? 'Prüfe Zutaten …' : null);
     try {
-      const deck = await buildDeck(theme, state.recipes);
+      const deck = await buildDeck(theme, state.recipes, filtering ? {
+        accept: (ings) => recipeConflicts(state, ings).length === 0,
+        onProgress: (n, of) => setProgress(`Prüfe Zutaten … ${n} von ${of} passende Gerichte`),
+      } : {});
       store.startRound(deck);
       onStarted();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
+      setProgress(null);
     }
   };
 
@@ -316,6 +329,10 @@ function ThemePicker({ onStarted, onCancel }: { onStarted: () => void; onCancel?
           </button>
         ))}
       </div>
+      {progress && <p className="muted-text">{progress}</p>}
+      {filtering && !progress && (
+        <p className="hint center">✓ Ohne {filterNames.join(', ')} – geprüft anhand der Zutatenlisten.</p>
+      )}
       {error && <p className="error">{error}</p>}
       {onCancel && <button className="link" onClick={onCancel}>Abbrechen</button>}
     </main>
