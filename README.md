@@ -9,6 +9,7 @@ Gemeinsame Einkaufsliste mit Wochenplaner für zwei (oder mehr) iPhones, ähnlic
 - **Wer hat was eingetragen:** Kürzel auf den Einträgen der anderen, 🎙 für Siri/Alexa. **Notiz an die Liste** („Bitte die Bio-Eier!“).
 - **Gerichte-Match 💚:** Wie Tinder für neue Rezepte. Ihr wischt beide denselben Stapel mit Chefkoch-Ideen, die noch nicht in euren Rezepten sind (Thema wählbar). Bei einem Match: als Rezept übernehmen oder übernehmen & gleich einplanen. Zu finden unter Rezepte.
 - **Unverträglichkeiten** (z. B. Fructose, Laktose, Gluten oder eigene Zutaten) unter *Mehr*: Gerichte-Match schlägt nur passende Rezepte vor (geprüft anhand der Zutatenlisten), bei Rezepten erscheint sonst ein Warnhinweis.
+- **Küchen-Display (Echo Show):** Im Silk-Browser des Echo Show (oder auf einem Tablet) dauerhaft den Wochenplan und das heutige Gericht anzeigen, Kochmodus per Fingertipp. Koppeln über einen 6-stelligen Code (*Mehr → Küchen-Display*).
 - **Kachel- oder Listenansicht**, jede Abteilung mit eigener Farbe.
 - **Live-Abgleich** zwischen beiden Handys (alle 5 Sekunden). Ohne Netz wird gespeichert und später nachgereicht.
 - **Siri:** „Hey Siri, Einkauf“ → „Was soll auf die Einkaufsliste?“ → „Brot und zwei Liter Milch“

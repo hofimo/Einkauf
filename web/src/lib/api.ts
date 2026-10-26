@@ -50,7 +50,7 @@ export class Api {
     return res.json();
   }
 
-  async upsert(table: Table | 'push_subscriptions', row: object, onConflict?: string): Promise<void> {
+  async upsert(table: Table | 'push_subscriptions' | 'pairing_codes', row: object, onConflict?: string): Promise<void> {
     const path = onConflict ? `${table}?on_conflict=${onConflict}` : table;
     await this.send(path, { method: 'POST', body: JSON.stringify(row) }, 'resolution=merge-duplicates,return=minimal');
   }

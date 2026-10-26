@@ -1,6 +1,7 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { INTOLERANCES } from '../lib/intolerance';
+import { createPairingCode, setKitchenDevice } from '../lib/pairing';
 import { disablePush, enablePush, pushStatus, sendTestPush, type PushStatus } from '../lib/push';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { orderedCategories, settingsOf, store, useStore } from '../lib/store';
@@ -8,7 +9,7 @@ import { TopBar } from './ui';
 
 export const joinLink = (id: string) => `${location.origin}${location.pathname}#join=${id}`;
 
-type Page = 'main' | 'share' | 'siri' | 'order';
+type Page = 'main' | 'share' | 'siri' | 'order' | 'kitchen';
 
 export function Settings() {
   const [page, setPage] = useState<Page>('main');
@@ -16,6 +17,7 @@ export function Settings() {
   if (page === 'share') return <><TopBar title="Haushalt teilen" left={back} /><SharePage /></>;
   if (page === 'siri') return <><TopBar title="Siri & Alexa" left={back} /><VoicePage /></>;
   if (page === 'order') return <><TopBar title="Reihenfolge im Laden" left={back} /><OrderPage /></>;
+  if (page === 'kitchen') return <><TopBar title="Küchen-Display" left={back} /><KitchenPage /></>;
   return <><TopBar title="Mehr" /><MainPage go={setPage} /></>;
 }
 
@@ -51,6 +53,7 @@ function MainPage({ go }: { go: (p: Page) => void }) {
       <ul className="list">
         <li><button className="list-row" onClick={() => go('share')}>👥 <span className="list-text">Haushalt teilen</span><span className="chevron">›</span></button></li>
         <li><button className="list-row" onClick={() => go('siri')}>🎙 <span className="list-text">Siri & Alexa einrichten</span><span className="chevron">›</span></button></li>
+        <li><button className="list-row" onClick={() => go('kitchen')}>📺 <span className="list-text">Küchen-Display (Echo Show)</span><span className="chevron">›</span></button></li>
       </ul>
 
       <h3 className="section-title">Einkauf & Wochenplan</h3>
@@ -268,6 +271,61 @@ function OrderPage() {
       {order.length > 0 && (
         <button className="danger-row" onClick={() => store.updateSettings({ category_order: [] })}>Standard-Reihenfolge</button>
       )}
+    </main>
+  );
+}
+
+/** Echo Show o. ä. als Küchen-Display koppeln */
+function KitchenPage() {
+  const { householdId } = useStore();
+  const [pairing, setPairing] = useState<{ code: string; expiresAt: Date } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [, tick] = useState(0);
+
+  useEffect(() => {
+    if (!pairing) return;
+    const t = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [pairing]);
+
+  const create = async () => {
+    if (!householdId) return;
+    setError(null);
+    try {
+      setPairing(await createPairingCode(householdId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const left = pairing ? Math.max(0, Math.round((pairing.expiresAt.getTime() - Date.now()) / 1000)) : 0;
+  const url = `${location.origin}${location.pathname}#kueche`;
+
+  return (
+    <main className="content prose">
+      <p>Auf einem Echo Show (oder Tablet) zeigt die Küchen-Ansicht dauerhaft euren Wochenplan und das heutige Gericht – mit Kochmodus zum Antippen.</p>
+      <ol className="steps">
+        <Step n={1}>Am Echo Show: <b>„Alexa, öffne Silk“</b> (der Browser).</Step>
+        <Step n={2}>Diese Adresse eingeben:<Copy value={url} /></Step>
+        <Step n={3}>
+          Code erzeugen und dort eingeben:
+          {pairing && left > 0 ? (
+            <div className="pair-code">
+              <span>{pairing.code}</span>
+              <small>noch {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')} gültig</small>
+            </div>
+          ) : (
+            <button className="primary wide pair-btn" onClick={() => void create()}>{pairing ? 'Neuen Code erzeugen' : 'Kopplungscode erzeugen'}</button>
+          )}
+          {error && <p className="error">{error}</p>}
+        </Step>
+        <Step n={4}>Optional in Silk die Seite als Lesezeichen speichern – dann reicht künftig „Alexa, öffne Silk“.</Step>
+      </ol>
+      <h3>Dieses Gerät</h3>
+      <p>Du kannst auch dieses Gerät (z. B. ein altes Tablet) zur Küchen-Ansicht machen:</p>
+      <button className="secondary wide" onClick={() => { setKitchenDevice(true); location.hash = `join=${householdId}&kueche`; location.reload(); }}>
+        📺 Als Küchen-Display anzeigen
+      </button>
     </main>
   );
 }

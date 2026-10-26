@@ -5,6 +5,8 @@ import { Settings } from './components/Settings';
 import { ShoppingList } from './components/ShoppingList';
 import { WeekPlan } from './components/WeekPlan';
 import { store, useStore } from './lib/store';
+import { KitchenView } from './components/KitchenView';
+import { isKitchenDevice, PAIRING_RE, redeemPairingCode } from './lib/pairing';
 
 type Tab = 'list' | 'plan' | 'recipes' | 'more';
 
@@ -24,6 +26,7 @@ export default function App() {
   const { householdId, member } = useStore();
   const [tab, setTab] = useState<Tab>('list');
   const [openRecipe, setOpenRecipe] = useState<{ id: string; n: number } | null>(null);
+  const [kitchen, setKitchen] = useState(isKitchenDevice);
 
   // Beitritt per Link (#join=…). Der Hash bleibt in der Adresse, damit
   // "Zum Home-Bildschirm" den Haushalt mitnimmt.
@@ -42,7 +45,7 @@ export default function App() {
 
   useEffect(() => {
     if (!householdId) return;
-    if (!readJoinHash()) history.replaceState(null, '', `#join=${householdId}`);
+    if (!readJoinHash()) history.replaceState(null, '', `#join=${householdId}${kitchen ? '&kueche' : ''}`);
     const onVisible = () => (document.visibilityState === 'visible' ? store.startPolling() : store.stopPolling());
     onVisible();
     document.addEventListener('visibilitychange', onVisible);
@@ -50,9 +53,10 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisible);
       store.stopPolling();
     };
-  }, [householdId]);
+  }, [householdId, kitchen]);
 
-  if (!householdId) return <Onboarding />;
+  if (!householdId) return <Onboarding kitchen={kitchen} />;
+  if (kitchen) return <KitchenView onExit={() => setKitchen(false)} />;
   if (!member.trim()) return <AskName />;
 
   return (
@@ -100,16 +104,42 @@ function AskName() {
   );
 }
 
-function Onboarding() {
+function Onboarding({ kitchen }: { kitchen: boolean }) {
   const [code, setCode] = useState('');
-  const [joining, setJoining] = useState(false);
+  const [joining, setJoining] = useState(kitchen);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const parsed = parseHouseholdCode(code);
+  const pairing = PAIRING_RE.test(code.trim().toUpperCase());
+
+  const join = async () => {
+    setError(null);
+    if (parsed) {
+      store.joinHousehold(parsed);
+      return;
+    }
+    if (!pairing) return;
+    setBusy(true);
+    try {
+      const id = await redeemPairingCode(code);
+      if (id) store.joinHousehold(id);
+      else setError('Code ungültig oder abgelaufen. Bitte am Handy einen neuen erzeugen.');
+    } catch (e) {
+      setError(`Keine Verbindung: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <main className="onboarding">
-      <div className="hero-emoji">🛒</div>
-      <h1>Einkauf</h1>
-      <p className="muted-text">Gemeinsame Einkaufsliste und Wochenplan – für euch beide.</p>
+      <div className="hero-emoji">{kitchen ? '👩‍🍳' : '🛒'}</div>
+      <h1>{kitchen ? 'Küchen-Display' : 'Einkauf'}</h1>
+      <p className="muted-text">
+        {kitchen
+          ? 'Am Handy unter Mehr → Küchen-Display einen Code erzeugen und hier eingeben.'
+          : 'Gemeinsame Einkaufsliste und Wochenplan – für euch beide.'}
+      </p>
       {!isConfigured && (
         <p className="warning">Supabase ist noch nicht eingerichtet. Trage URL und Key in <code>web/src/config.ts</code> ein (siehe README).</p>
       )}
@@ -122,10 +152,12 @@ function Onboarding() {
           </p>
         </div>
       ) : (
-        <form className="stack" onSubmit={(e) => { e.preventDefault(); if (parsed) store.joinHousehold(parsed); }}>
-          <input className="search" autoFocus value={code} placeholder="Code oder Link einfügen" onChange={(e) => setCode(e.target.value)} />
-          <button className="primary wide" disabled={!parsed}>Beitreten</button>
-          <button type="button" className="link" onClick={() => setJoining(false)}>Zurück</button>
+        <form className="stack" onSubmit={(e) => { e.preventDefault(); void join(); }}>
+          <input className={`search ${kitchen ? 'pair-input' : ''}`} autoFocus value={code} autoCapitalize="characters" autoComplete="off"
+            placeholder={kitchen ? 'z. B. K7QX2M' : 'Kopplungscode, Haushalts-Code oder Link'} onChange={(e) => setCode(e.target.value)} />
+          <button className="primary wide" disabled={(!parsed && !pairing) || busy}>{busy ? '…' : 'Verbinden'}</button>
+          {error && <p className="error center">{error}</p>}
+          {!kitchen && <button type="button" className="link" onClick={() => setJoining(false)}>Zurück</button>}
         </form>
       )}
     </main>

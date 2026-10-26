@@ -118,6 +118,15 @@ create table if not exists public.match_votes (
 );
 create index if not exists match_votes_household on public.match_votes (household_id);
 
+-- Kopplungscodes für weitere Geräte (z. B. Echo Show): 6 Zeichen, 10 Minuten gültig -----
+create table if not exists public.pairing_codes (
+  code          text primary key,
+  household_id  uuid not null,
+  expires_at    timestamptz not null default now() + interval '10 minutes',
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
 -- Spätere Ergänzungen bestehender Tabellen (idempotent) ---------------------------
 alter table public.shopping_items add column if not exists added_by text not null default '';
 alter table public.settings add column if not exists list_note      text not null default '';
@@ -132,7 +141,7 @@ alter table public.settings add column if not exists avoid_words    jsonb not nu
 do $$
 declare t text;
 begin
-  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings', 'push_subscriptions', 'match_dishes', 'match_votes'] loop
+  foreach t in array array['shopping_items', 'recipes', 'meal_plan', 'staples', 'settings', 'push_subscriptions', 'match_dishes', 'match_votes', 'pairing_codes'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists household_access on public.%I', t);
     execute format(
@@ -244,3 +253,18 @@ $$;
 grant execute on function public.add_items(text, text) to anon, authenticated;
 grant execute on function public.list_items() to anon, authenticated;
 grant execute on function public.join_de(text[]) to anon, authenticated;
+
+-- Kopplungscode einlösen: liefert den Haushalts-Code und löscht den Kopplungscode.
+-- Läuft mit erhöhten Rechten, weil das neue Gerät den Haushalt ja noch nicht kennt.
+create or replace function public.redeem_pairing(p_code text) returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare hh uuid;
+begin
+  delete from public.pairing_codes where expires_at < now();
+  delete from public.pairing_codes where code = upper(btrim(p_code)) returning household_id into hh;
+  return hh;
+end $$;
+grant execute on function public.redeem_pairing(text) to anon, authenticated;
