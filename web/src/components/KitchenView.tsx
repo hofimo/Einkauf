@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { conflictSummary } from '../lib/intolerance';
-import { kitchenOptions, setKitchenDevice } from '../lib/pairing';
+import { kitchenOptions } from '../lib/pairing';
 import { recipeConflicts, settingsOf, useStore } from '../lib/store';
 import type { MealPlanEntry, Recipe } from '../lib/types';
 import { CookMode } from './CookMode';
@@ -14,7 +14,7 @@ const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), 
  * Küchen-Ansicht für Echo Show (Silk-Browser) oder ein Tablet: links die Woche,
  * rechts das ausgewählte Gericht (standardmäßig heute) mit Kochmodus. Aktualisiert sich selbst.
  */
-export function KitchenView({ onExit }: { onExit: () => void }) {
+export function KitchenView({ onOpenList }: { onOpenList: () => void }) {
   const state = useStore();
   const settings = settingsOf(state);
   const [now, setNow] = useState(() => new Date());
@@ -24,12 +24,6 @@ export function KitchenView({ onExit }: { onExit: () => void }) {
   const [opts] = useState(kitchenOptions);
   useWakeLock();
 
-  // Thema erzwingen, z. B. wenn Home Assistant dunkel ist, das Tablet aber hell
-  useEffect(() => {
-    if (!opts.theme) return;
-    document.documentElement.dataset.theme = opts.theme;
-    return () => void delete document.documentElement.dataset.theme;
-  }, [opts]);
 
   // Dauerbetrieb: nachts einmal neu laden, damit neue App-Versionen ankommen
   const cookingRef = useRef(false);
@@ -84,7 +78,7 @@ export function KitchenView({ onExit }: { onExit: () => void }) {
           </div>
         )}
         <div className="kitchen-chips">
-          <span className="kitchen-chip">🛒 {openItems} {openItems === 1 ? 'Artikel' : 'Artikel'} auf der Liste</span>
+          <button className="kitchen-chip" onClick={onOpenList}>🛒 {openItems} Artikel auf der Liste ›</button>
           {settings.list_note && <span className="kitchen-chip note-chip">📝 {settings.list_note}</span>}
         </div>
       </header>
@@ -151,13 +145,6 @@ export function KitchenView({ onExit }: { onExit: () => void }) {
           )}
         </section>
       </div>
-
-      <button className="kitchen-exit" onClick={() => {
-        if (!confirm('Küchen-Ansicht auf diesem Gerät beenden?')) return;
-        setKitchenDevice(false);
-        history.replaceState(null, '', `#join=${state.householdId}`);
-        onExit();
-      }} aria-label="Küchen-Ansicht beenden">⚙️</button>
 
       {cooking && <CookMode recipe={cooking.recipe} servings={cooking.servings} onClose={() => setCooking(null)} />}
     </div>

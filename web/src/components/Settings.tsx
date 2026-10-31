@@ -1,7 +1,7 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { INTOLERANCES } from '../lib/intolerance';
-import { createPairingCode, kitchenLink, setKitchenDevice } from '../lib/pairing';
+import { createPairingCode, isKitchenDevice, kitchenLink, setKitchenDevice } from '../lib/pairing';
 import { disablePush, enablePush, pushStatus, sendTestPush, type PushStatus } from '../lib/push';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { orderedCategories, settingsOf, store, useStore } from '../lib/store';
@@ -336,10 +336,24 @@ function KitchenPage() {
         <code>ohneuhr</code> blendet die Uhr aus (wenn das Dashboard schon eine hat). Der Link ist wie ein Schlüssel zu eurer Liste – nicht öffentlich teilen.
       </p>
       <h3>Dieses Gerät</h3>
-      <p>Du kannst auch dieses Gerät (z. B. ein altes Tablet) zur Küchen-Ansicht machen:</p>
-      <button className="secondary wide" onClick={() => { setKitchenDevice(true); location.hash = `join=${householdId}&kueche`; location.reload(); }}>
-        📺 Als Küchen-Display anzeigen
-      </button>
+      {isKitchenDevice() ? (
+        <>
+          <p>Dieses Gerät ist ein Küchen-Display und startet mit dem Küche-Tab.</p>
+          <button className="secondary wide" onClick={() => {
+            if (!confirm('Küchen-Ansicht auf diesem Gerät beenden?')) return;
+            setKitchenDevice(false);
+            location.hash = `join=${householdId}`;
+            location.reload();
+          }}>Küchen-Ansicht beenden</button>
+        </>
+      ) : (
+        <>
+          <p>Du kannst auch dieses Gerät (z. B. ein altes Tablet) zur Küchen-Ansicht machen:</p>
+          <button className="secondary wide" onClick={() => { setKitchenDevice(true); location.hash = `join=${householdId}&kueche`; location.reload(); }}>
+            📺 Als Küchen-Display anzeigen
+          </button>
+        </>
+      )}
     </main>
   );
 }

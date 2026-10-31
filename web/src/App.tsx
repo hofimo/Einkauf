@@ -6,9 +6,9 @@ import { ShoppingList } from './components/ShoppingList';
 import { WeekPlan } from './components/WeekPlan';
 import { store, useStore } from './lib/store';
 import { KitchenView } from './components/KitchenView';
-import { isKitchenDevice, PAIRING_RE, redeemPairingCode } from './lib/pairing';
+import { isKitchenDevice, kitchenOptions, PAIRING_RE, redeemPairingCode } from './lib/pairing';
 
-type Tab = 'list' | 'plan' | 'recipes' | 'more';
+type Tab = 'kitchen' | 'list' | 'plan' | 'recipes' | 'more';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,9 +25,20 @@ function readJoinHash(): string | null {
 
 export default function App() {
   const { householdId, member } = useStore();
-  const [tab, setTab] = useState<Tab>('list');
+  const [kitchen] = useState(isKitchenDevice);
+  const [tab, setTab] = useState<Tab>(kitchen ? 'kitchen' : 'list');
   const [openRecipe, setOpenRecipe] = useState<{ id: string; n: number } | null>(null);
-  const [kitchen, setKitchen] = useState(isKitchenDevice);
+
+  // Küchen-Display: Thema erzwingen, z. B. wenn Home Assistant dunkel ist, das Tablet aber hell
+  useEffect(() => {
+    const theme = kitchen ? kitchenOptions().theme : null;
+    if (theme) document.documentElement.dataset.theme = theme;
+  }, [kitchen]);
+
+  // Küchen-Display: Einträge erscheinen als "Küche" statt ohne Namen
+  useEffect(() => {
+    if (kitchen && householdId && !member.trim()) store.setMember('Küche');
+  }, [kitchen, householdId, member]);
 
   // Beitritt per Link (#join=…). Der Hash bleibt in der Adresse, damit
   // "Zum Home-Bildschirm" den Haushalt mitnimmt.
@@ -62,24 +73,27 @@ export default function App() {
   }, [householdId, kitchen]);
 
   if (!householdId) return <Onboarding kitchen={kitchen} />;
-  if (kitchen) return <KitchenView onExit={() => setKitchen(false)} />;
-  if (!member.trim()) return <AskName />;
+  if (!kitchen && !member.trim()) return <AskName />;
+
+  const tabs = [
+    ...(kitchen ? [['kitchen', '👩‍🍳', 'Küche'] as const] : []),
+    ['list', '🛒', 'Einkauf'],
+    ['plan', '📅', 'Wochenplan'],
+    ['recipes', '📖', 'Rezepte'],
+    ['more', '⚙️', 'Mehr'],
+  ] as const;
 
   return (
     <div className="app">
       <div className="screen" key={tab}>
+        {tab === 'kitchen' && <KitchenView onOpenList={() => setTab('list')} />}
         {tab === 'list' && <ShoppingList />}
         {tab === 'plan' && <WeekPlan onOpenRecipe={(id) => { setOpenRecipe({ id, n: Date.now() }); setTab('recipes'); }} />}
         {tab === 'recipes' && <Recipes key={openRecipe?.n} initialRecipeId={openRecipe?.id} />}
         {tab === 'more' && <Settings />}
       </div>
       <nav className="tabbar">
-        {([
-          ['list', '🛒', 'Einkauf'],
-          ['plan', '📅', 'Wochenplan'],
-          ['recipes', '📖', 'Rezepte'],
-          ['more', '⚙️', 'Mehr'],
-        ] as const).map(([key, icon, label]) => (
+        {tabs.map(([key, icon, label]) => (
           <button key={key} className={tab === key ? 'active' : ''} onClick={() => {
             setTab(key);
             if (key !== 'recipes') setOpenRecipe(null);

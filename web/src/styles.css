@@ -747,7 +747,10 @@ section:first-child .section-title { margin-top: 6px; }
 .kfocus-actions button { padding: 18px; font-size: 20px; }
 .kfocus-ings { font-size: 18px; }
 .kitchen .banner.conflict { margin: 0; font-size: 17px; }
-.kitchen-exit { position: fixed; right: 14px; bottom: 12px; font-size: 22px; opacity: 0.35; }
+/* Mit Tab-Leiste darunter */
+.app .kitchen { min-height: calc(100dvh - 64px - var(--safe-bottom)); }
+.app .kitchen.embedded { height: calc(100dvh - 64px - var(--safe-bottom)); }
+button.kitchen-chip { color: var(--text); font: inherit; font-size: 18px; }
 
 /* Eingebettet (Home Assistant Webseiten-Karte): genau die Höhe des Rahmens nutzen */
 .kitchen.embedded { height: 100dvh; min-height: 0; padding: 12px 14px 14px; gap: 12px; }
