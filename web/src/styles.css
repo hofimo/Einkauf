@@ -17,8 +17,9 @@
   color-scheme: light dark;
 }
 
+/* Dunkel: folgt dem System, außer die Küchen-Ansicht erzwingt ein Thema (#…&hell / &dunkel) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #000000;
     --card: #1c1c1e;
     --text: #f2f2f7;
@@ -29,6 +30,18 @@
     --green-soft: rgba(47, 168, 90, 0.22);
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --card: #1c1c1e;
+  --text: #f2f2f7;
+  --muted: #8e8e93;
+  --line: rgba(84, 84, 88, 0.5);
+  --tile-done: #2c2c2e;
+  --bar: rgba(22, 22, 24, 0.88);
+  --green-soft: rgba(47, 168, 90, 0.22);
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -266,7 +279,8 @@ section:first-child .section-title { margin-top: 6px; }
 }
 .primary { background: var(--green); color: #fff; }
 .secondary { background: var(--green-soft); color: var(--green-dark); }
-@media (prefers-color-scheme: dark) { .secondary { color: #6bd994; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .secondary { color: #6bd994; } }
+:root[data-theme="dark"] .secondary { color: #6bd994; }
 .wide { display: block; width: 100%; }
 .button-row { display: flex; gap: 10px; }
 .button-row > * { flex: 1; }
@@ -405,7 +419,7 @@ section:first-child .section-title { margin-top: 6px; }
   margin: 8px 0;
 }
 .copy small { width: 100%; color: var(--muted); }
-.copy code { flex: 1; min-width: 0; }
+.copy code { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; }
 
 .prose h3 { margin: 20px 4px 6px; }
 .prose p { margin: 6px 4px; font-size: 15px; }
@@ -734,6 +748,28 @@ section:first-child .section-title { margin-top: 6px; }
 .kfocus-ings { font-size: 18px; }
 .kitchen .banner.conflict { margin: 0; font-size: 17px; }
 .kitchen-exit { position: fixed; right: 14px; bottom: 12px; font-size: 22px; opacity: 0.35; }
+
+/* Eingebettet (Home Assistant Webseiten-Karte): genau die Höhe des Rahmens nutzen */
+.kitchen.embedded { height: 100dvh; min-height: 0; padding: 12px 14px 14px; gap: 12px; }
+.kitchen.no-clock .kitchen-head { justify-content: flex-end; }
+
+/* Kleine Rahmen (Karte im Dashboard, kleines Tablet) */
+@media (max-width: 760px), (max-height: 520px) {
+  .kitchen-time { font-size: 36px; }
+  .kitchen-date, .kitchen-chip, .kday-empty, .kfocus-label { font-size: 15px; }
+  .kitchen-chip { padding: 7px 12px; }
+  .kfocus-title { font-size: 24px; }
+  .kfocus-actions button { padding: 12px; font-size: 16px; }
+  .kfocus-ings { font-size: 16px; }
+  .kday { padding: 7px 10px; }
+  .kmeal-img { width: 34px; height: 34px; }
+}
+@media (max-width: 640px) {
+  .kitchen-body { display: flex; flex-direction: column; overflow-y: auto; }
+  .kitchen-week, .kitchen-focus { flex: none; overflow: visible; }
+  .kitchen-focus { order: -1; }
+  .kfocus-img { aspect-ratio: 21 / 9; }
+}
 
 /* Hochformat (z. B. Echo Show 15 gedreht) */
 @media (max-aspect-ratio: 1/1) {

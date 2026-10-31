@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { categoryFor, emojiFor } from './catalog';
 import { DEFAULT_STAPLES, isStaple, parseIngredient, splitSpoken } from './parser';
 import { combineQuantities, formatQuantity } from './quantity';
+import { kitchenOptions } from './pairing';
 
 describe('Zutaten-Parser', () => {
   const cases: [string, number | null, string, string, string][] = [
@@ -197,5 +198,19 @@ describe('Unverträglichkeiten', async () => {
   });
   it('ohne Auswahl keine Treffer', () => {
     expect(findConflicts(ings('2 Äpfel'), [])).toEqual([]);
+  });
+});
+
+describe('Küchen-Optionen', () => {
+  it('liest Thema und Uhr aus der Adresse', () => {
+    const o = kitchenOptions('#join=1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed&kueche&dunkel&ohneuhr');
+    expect(o.theme).toBe('dark');
+    expect(o.clock).toBe(false);
+  });
+  it('ohne Optionen: Systemthema und Uhr', () => {
+    const o = kitchenOptions('#join=x&kueche');
+    expect(o.theme).toBeNull();
+    expect(o.clock).toBe(true);
+    expect(kitchenOptions('#kueche&hell').theme).toBe('light');
   });
 });

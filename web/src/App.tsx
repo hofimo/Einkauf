@@ -19,7 +19,8 @@ export function parseHouseholdCode(text: string): string | null {
 }
 
 function readJoinHash(): string | null {
-  return location.hash.startsWith('#join=') ? parseHouseholdCode(location.hash.slice(6)) : null;
+  const m = location.hash.match(/[#&]join=([^&]+)/);
+  return m ? parseHouseholdCode(m[1]) : null;
 }
 
 export default function App() {
@@ -45,7 +46,12 @@ export default function App() {
 
   useEffect(() => {
     if (!householdId) return;
-    if (!readJoinHash()) history.replaceState(null, '', `#join=${householdId}${kitchen ? '&kueche' : ''}`);
+    if (!readJoinHash()) {
+      // Haushalt in die Adresse schreiben, Optionen wie "&dunkel" behalten
+      const flags = location.hash.replace(/^#/, '').split('&').filter((f) => f && !f.startsWith('join='));
+      if (kitchen && !flags.includes('kueche')) flags.unshift('kueche');
+      history.replaceState(null, '', `#${[`join=${householdId}`, ...(kitchen ? flags : [])].join('&')}`);
+    }
     const onVisible = () => (document.visibilityState === 'visible' ? store.startPolling() : store.stopPolling());
     onVisible();
     document.addEventListener('visibilitychange', onVisible);

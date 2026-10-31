@@ -1,7 +1,7 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { INTOLERANCES } from '../lib/intolerance';
-import { createPairingCode, setKitchenDevice } from '../lib/pairing';
+import { createPairingCode, kitchenLink, setKitchenDevice } from '../lib/pairing';
 import { disablePush, enablePush, pushStatus, sendTestPush, type PushStatus } from '../lib/push';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { orderedCategories, settingsOf, store, useStore } from '../lib/store';
@@ -300,6 +300,8 @@ function KitchenPage() {
 
   const left = pairing ? Math.max(0, Math.round((pairing.expiresAt.getTime() - Date.now()) / 1000)) : 0;
   const url = `${location.origin}${location.pathname}#kueche`;
+  const haUrl = householdId ? kitchenLink(householdId) : '';
+  const haYaml = `type: iframe\nurl: ${haUrl}\naspect_ratio: 100%`;
 
   return (
     <main className="content prose">
@@ -321,6 +323,18 @@ function KitchenPage() {
         </Step>
         <Step n={4}>Optional in Silk die Seite als Lesezeichen speichern – dann reicht künftig „Alexa, öffne Silk“.</Step>
       </ol>
+      <h3>Home Assistant &amp; Kiosk-Tablets</h3>
+      <p>
+        In Home Assistant (Webseiten-Karte) oder Kiosk-Apps vergisst die Seite oft, mit welchem Haushalt sie verbunden war.
+        Nimm dort diesen Link – er bringt den Haushalt gleich mit, ein Code ist nicht nötig:
+      </p>
+      <Copy value={haUrl} label="Link mit Haushalt" />
+      <p>Als Dashboard-Ansicht im Modus <b>„Panel (eine Karte)“</b>, dann füllt die Küchen-Ansicht den ganzen Bildschirm:</p>
+      <Copy value={haYaml} label="Karte (YAML)" />
+      <p className="hint">
+        Optionen, mit <code>&amp;</code> an den Link hängen: <code>dunkel</code> oder <code>hell</code> erzwingt das Farbschema,
+        <code>ohneuhr</code> blendet die Uhr aus (wenn das Dashboard schon eine hat). Der Link ist wie ein Schlüssel zu eurer Liste – nicht öffentlich teilen.
+      </p>
       <h3>Dieses Gerät</h3>
       <p>Du kannst auch dieses Gerät (z. B. ein altes Tablet) zur Küchen-Ansicht machen:</p>
       <button className="secondary wide" onClick={() => { setKitchenDevice(true); location.hash = `join=${householdId}&kueche`; location.reload(); }}>

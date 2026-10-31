@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { conflictSummary } from '../lib/intolerance';
-import { setKitchenDevice } from '../lib/pairing';
+import { kitchenOptions, setKitchenDevice } from '../lib/pairing';
 import { recipeConflicts, settingsOf, useStore } from '../lib/store';
 import type { MealPlanEntry, Recipe } from '../lib/types';
 import { CookMode } from './CookMode';
@@ -21,7 +21,27 @@ export function KitchenView({ onExit }: { onExit: () => void }) {
   const [selected, setSelected] = useState<string | null>(null); // Plan-Eintrag
   const [cooking, setCooking] = useState<{ recipe: Recipe; servings: number } | null>(null);
   const [showIngredients, setShowIngredients] = useState(false);
+  const [opts] = useState(kitchenOptions);
   useWakeLock();
+
+  // Thema erzwingen, z. B. wenn Home Assistant dunkel ist, das Tablet aber hell
+  useEffect(() => {
+    if (!opts.theme) return;
+    document.documentElement.dataset.theme = opts.theme;
+    return () => void delete document.documentElement.dataset.theme;
+  }, [opts]);
+
+  // Dauerbetrieb: nachts einmal neu laden, damit neue App-Versionen ankommen
+  const cookingRef = useRef(false);
+  cookingRef.current = cooking !== null;
+  useEffect(() => {
+    const started = Date.now();
+    const t = window.setInterval(() => {
+      const h = new Date().getHours();
+      if (h >= 3 && h < 5 && Date.now() - started > 3 * 3600_000 && !cookingRef.current && navigator.onLine) location.reload();
+    }, 10 * 60_000);
+    return () => window.clearInterval(t);
+  }, []);
 
   // Uhr und Tageswechsel
   useEffect(() => {
@@ -55,12 +75,14 @@ export function KitchenView({ onExit }: { onExit: () => void }) {
   };
 
   return (
-    <div className="kitchen">
+    <div className={`kitchen ${opts.embedded ? 'embedded' : ''} ${opts.clock ? '' : 'no-clock'}`}>
       <header className="kitchen-head">
-        <div>
-          <div className="kitchen-time">{now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</div>
-          <div className="kitchen-date">{now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-        </div>
+        {opts.clock && (
+          <div>
+            <div className="kitchen-time">{now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</div>
+            <div className="kitchen-date">{now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+          </div>
+        )}
         <div className="kitchen-chips">
           <span className="kitchen-chip">🛒 {openItems} {openItems === 1 ? 'Artikel' : 'Artikel'} auf der Liste</span>
           {settings.list_note && <span className="kitchen-chip note-chip">📝 {settings.list_note}</span>}
@@ -133,7 +155,7 @@ export function KitchenView({ onExit }: { onExit: () => void }) {
       <button className="kitchen-exit" onClick={() => {
         if (!confirm('Küchen-Ansicht auf diesem Gerät beenden?')) return;
         setKitchenDevice(false);
-        history.replaceState(null, '', location.hash.replace(/&kueche\b/, ''));
+        history.replaceState(null, '', `#join=${state.householdId}`);
         onExit();
       }} aria-label="Küchen-Ansicht beenden">⚙️</button>
 

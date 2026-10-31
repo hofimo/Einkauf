@@ -66,3 +66,27 @@ export function setKitchenDevice(on: boolean) {
     // egal
   }
 }
+
+export interface KitchenOptions {
+  /** Läuft in einem Rahmen (Home Assistant Webseiten-Karte o. ä.) */
+  embedded: boolean;
+  theme: 'light' | 'dark' | null;
+  clock: boolean;
+}
+
+/** Optionen aus der Adresse: "#join=…&kueche&dunkel&ohneuhr" */
+export function kitchenOptions(hash = location.hash): KitchenOptions {
+  const has = (w: string) => new RegExp(`[#&]${w}\\b`).test(hash);
+  let embedded = has('eingebettet');
+  try {
+    embedded ||= window.self !== window.top;
+  } catch {
+    embedded = true; // Zugriff auf fremdes Fenster verweigert → sicher eingebettet
+  }
+  return { embedded, theme: has('dunkel') ? 'dark' : has('hell') ? 'light' : null, clock: !has('ohneuhr') };
+}
+
+/** Link, der den Haushalt gleich mitbringt – für Dashboards, die sich nichts merken (Home Assistant, Kiosk-Apps). */
+export function kitchenLink(householdId: string, extra: string[] = []): string {
+  return `${location.origin}${location.pathname}#${['join=' + householdId, 'kueche', ...extra].join('&')}`;
+}
