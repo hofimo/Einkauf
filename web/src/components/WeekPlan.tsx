@@ -126,13 +126,17 @@ function useMealDrag(changeWeek: (delta: number) => void) {
   const pressTimer = useRef<number | undefined>(undefined);
   const weekTimer = useRef<number | undefined>(undefined);
   const droppedAt = useRef(0);
+  const startY = useRef(0);
+  const dragging = useRef(false);
   const changeWeekRef = useRef(changeWeek);
   changeWeekRef.current = changeWeek;
 
   useEffect(() => {
     if (!entry) return;
     let frame = 0;
-    let lastY = 0;
+    // Erst nach der ersten Bewegung am Rand scrollen – sonst rollt die Seite beim Anheben weg
+    let lastY = startY.current;
+    let moved = false;
     const target = (x: number, y: number) => {
       const el = document.elementFromPoint(x, y);
       return {
@@ -142,7 +146,7 @@ function useMealDrag(changeWeek: (delta: number) => void) {
     };
     const scroll = () => {
       const edge = 70;
-      const speed = lastY < edge ? -(edge - lastY) / 4 : lastY > innerHeight - edge - 64 ? (lastY - (innerHeight - edge - 64)) / 4 : 0;
+      const speed = !moved ? 0 : lastY < edge ? -(edge - lastY) / 4 : lastY > innerHeight - edge - 64 ? (lastY - (innerHeight - edge - 64)) / 4 : 0;
       if (speed) window.scrollBy(0, speed);
       frame = requestAnimationFrame(scroll);
     };
@@ -150,6 +154,7 @@ function useMealDrag(changeWeek: (delta: number) => void) {
     let week: number | null = null;
     const move = (e: PointerEvent) => {
       e.preventDefault();
+      moved ||= Math.abs(e.clientY - startY.current) > 6;
       lastY = e.clientY;
       setPos({ x: e.clientX, y: e.clientY });
       const t = target(e.clientX, e.clientY);
@@ -173,12 +178,9 @@ function useMealDrag(changeWeek: (delta: number) => void) {
       setOverDay(null);
       setOverWeek(null);
     };
-    // Während des Ziehens nicht scrollen/markieren (iOS)
-    const block = (e: TouchEvent) => e.preventDefault();
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', end);
     window.addEventListener('pointercancel', end);
-    window.addEventListener('touchmove', block, { passive: false });
     document.body.classList.add('is-dragging');
     return () => {
       cancelAnimationFrame(frame);
@@ -186,14 +188,28 @@ function useMealDrag(changeWeek: (delta: number) => void) {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);
-      window.removeEventListener('touchmove', block);
       document.body.classList.remove('is-dragging');
     };
   }, [entry]);
 
+  // iOS: Seite nicht scrollen, solange ein Gericht gezogen wird. Der Listener muss schon vor
+  // dem Berühren hängen, sonst nimmt Safari die Geste fürs Scrollen und bricht das Ziehen ab.
+  useEffect(() => {
+    dragging.current = entry !== null;
+  }, [entry]);
+  useEffect(() => {
+    const block = (e: TouchEvent) => {
+      if (dragging.current) e.preventDefault();
+    };
+    document.addEventListener('touchmove', block, { passive: false });
+    return () => document.removeEventListener('touchmove', block);
+  }, []);
+
   const start = (e: { clientX: number; clientY: number }, item: MealPlanEntry) => {
     window.clearTimeout(pressTimer.current);
     navigator.vibrate?.(15);
+    startY.current = e.clientY;
+    dragging.current = true;
     setPos({ x: e.clientX, y: e.clientY });
     setEntry(item);
   };
