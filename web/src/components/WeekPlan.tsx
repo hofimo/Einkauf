@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { displayName } from '../lib/parser';
 import { formatQuantity } from '../lib/quantity';
 import { recipeConflicts, settingsOf, store, useStore } from '../lib/store';
 import { ConflictBanner } from './Recipes';
-import type { Recipe } from '../lib/types';
+import type { MealPlanEntry, Recipe } from '../lib/types';
 import { RecipeImage, Sheet, Stepper, TopBar } from './ui';
 
 // ---------------------------------------------------------------- Datumshilfen
@@ -44,6 +44,7 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
   const weekStart = useMemo(() => addDays(startOfWeek(new Date(), firstDay), offset * 7), [firstDay, offset]);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const drag = useMealDrag((delta) => setOffset((o) => o + delta));
 
   // In der aktuellen Woche direkt zu heute springen
   useEffect(() => {
@@ -55,8 +56,8 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
     <>
       <TopBar
         title={thisWeek ? `Diese Woche · ${rangeTitle(weekStart)}` : rangeTitle(weekStart)}
-        left={<button className="icon-btn" aria-label="Vorige Woche" onClick={() => setOffset(offset - 1)}>‹</button>}
-        right={<button className="icon-btn" aria-label="Nächste Woche" onClick={() => setOffset(offset + 1)}>›</button>}
+        left={<button className={`icon-btn ${drag.overWeek === -1 ? 'drop-on' : ''}`} data-drop-week="-1" aria-label="Vorige Woche" onClick={() => setOffset(offset - 1)}>‹</button>}
+        right={<button className={`icon-btn ${drag.overWeek === 1 ? 'drop-on' : ''}`} data-drop-week="1" aria-label="Nächste Woche" onClick={() => setOffset(offset + 1)}>›</button>}
       />
       <main className="content">
         {!thisWeek && (
@@ -66,7 +67,8 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
           const key = dayKey(day);
           const entries = meal_plan.filter((e) => e.day === key).sort((a, b) => a.created_at.localeCompare(b.created_at));
           return (
-            <section key={key} id={`day-${key}`} className="day">
+            <section key={key} id={`day-${key}`} data-drop-day={key}
+              className={`day ${drag.overDay === key && drag.entry?.day !== key ? 'drop-on' : ''}`}>
               <h3 className={`section-title day-title ${key === today ? 'today' : ''}`}>
                 <span>{weekday(day)}</span>
                 <span>{shortDate(day)}</span>
@@ -75,8 +77,10 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
                 {entries.map((entry) => {
                   const recipe = recipes.find((r) => r.id === entry.recipe_id);
                   return (
-                    <li key={entry.id} className="list-row">
-                      <button className="list-row-main" disabled={!recipe} onClick={() => recipe && onOpenRecipe(recipe.id)}>
+                    <li key={entry.id} className={`list-row plan-row ${drag.entry?.id === entry.id ? 'dragging' : ''}`}
+                      onPointerDown={(e) => drag.press(e, entry)}>
+                      <span className="drag-handle" aria-hidden onPointerDown={(e) => drag.grab(e, entry)}>⠿</span>
+                      <button className="list-row-main" disabled={!recipe} onClick={() => recipe && !drag.justDropped() && onOpenRecipe(recipe.id)}>
                         <RecipeImage src={recipe?.image_url} className="thumb small" />
                         <span className="list-text">
                           <strong>{entry.title}</strong>
@@ -97,8 +101,134 @@ export function WeekPlan({ onOpenRecipe }: { onOpenRecipe: (id: string) => void 
         })}
       </main>
       {pickDay && <RecipePicker day={pickDay} onClose={() => setPickDay(null)} />}
+      {drag.entry && drag.pos && (
+        <div className="drag-ghost" style={{ left: drag.pos.x, top: drag.pos.y }}>
+          <RecipeImage src={recipes.find((r) => r.id === drag.entry?.recipe_id)?.image_url} className="thumb small" />
+          <strong>{drag.entry.title}</strong>
+        </div>
+      )}
     </>
   );
+}
+
+// ---------------------------------------------------------------- Ziehen & Ablegen
+
+/**
+ * Gerichte per Ziehen auf einen anderen Tag legen. Mit Zeiger-Events statt HTML5-Drag,
+ * damit es auch auf iPhone und Echo Show geht: am Griff sofort, sonst nach langem Drücken.
+ * Am Rand wird gescrollt; über ‹ / › kurz halten wechselt die Woche.
+ */
+function useMealDrag(changeWeek: (delta: number) => void) {
+  const [entry, setEntry] = useState<MealPlanEntry | null>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [overDay, setOverDay] = useState<string | null>(null);
+  const [overWeek, setOverWeek] = useState<number | null>(null);
+  const pressTimer = useRef<number>();
+  const weekTimer = useRef<number>();
+  const droppedAt = useRef(0);
+  const changeWeekRef = useRef(changeWeek);
+  changeWeekRef.current = changeWeek;
+
+  useEffect(() => {
+    if (!entry) return;
+    let frame = 0;
+    let lastY = 0;
+    const target = (x: number, y: number) => {
+      const el = document.elementFromPoint(x, y);
+      return {
+        day: el?.closest<HTMLElement>('[data-drop-day]')?.dataset.dropDay ?? null,
+        week: Number(el?.closest<HTMLElement>('[data-drop-week]')?.dataset.dropWeek) || null,
+      };
+    };
+    const scroll = () => {
+      const edge = 70;
+      const speed = lastY < edge ? -(edge - lastY) / 4 : lastY > innerHeight - edge - 64 ? (lastY - (innerHeight - edge - 64)) / 4 : 0;
+      if (speed) window.scrollBy(0, speed);
+      frame = requestAnimationFrame(scroll);
+    };
+    frame = requestAnimationFrame(scroll);
+    let week: number | null = null;
+    const move = (e: PointerEvent) => {
+      e.preventDefault();
+      lastY = e.clientY;
+      setPos({ x: e.clientX, y: e.clientY });
+      const t = target(e.clientX, e.clientY);
+      setOverDay(t.day);
+      if (t.week !== week) {
+        week = t.week;
+        setOverWeek(week);
+        window.clearTimeout(weekTimer.current);
+        if (week) {
+          const delta = week;
+          weekTimer.current = window.setTimeout(() => changeWeekRef.current(delta), 600);
+        }
+      }
+    };
+    const end = (e: PointerEvent) => {
+      const t = target(e.clientX, e.clientY);
+      if (e.type === 'pointerup' && t.day) store.movePlanEntry(entry, t.day);
+      droppedAt.current = Date.now();
+      setEntry(null);
+      setPos(null);
+      setOverDay(null);
+      setOverWeek(null);
+    };
+    // Während des Ziehens nicht scrollen/markieren (iOS)
+    const block = (e: TouchEvent) => e.preventDefault();
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    window.addEventListener('touchmove', block, { passive: false });
+    document.body.classList.add('is-dragging');
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(weekTimer.current);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+      window.removeEventListener('touchmove', block);
+      document.body.classList.remove('is-dragging');
+    };
+  }, [entry]);
+
+  const start = (e: { clientX: number; clientY: number }, item: MealPlanEntry) => {
+    window.clearTimeout(pressTimer.current);
+    navigator.vibrate?.(15);
+    setPos({ x: e.clientX, y: e.clientY });
+    setEntry(item);
+  };
+
+  /** Griff: sofort ziehen */
+  const grab = (e: React.PointerEvent, item: MealPlanEntry) => {
+    e.preventDefault();
+    e.stopPropagation();
+    start(e, item);
+  };
+
+  /** Ganze Zeile: nach 350 ms Drücken ziehen, Bewegung vorher bricht ab (= Scrollen) */
+  const press = (e: React.PointerEvent, item: MealPlanEntry) => {
+    if (e.button !== 0) return;
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    const cancel = () => {
+      window.clearTimeout(pressTimer.current);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', cancel);
+      window.removeEventListener('pointercancel', cancel);
+    };
+    const onMove = (m: PointerEvent) => {
+      if (Math.hypot(m.clientX - x0, m.clientY - y0) > 8) cancel();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', cancel);
+    window.addEventListener('pointercancel', cancel);
+    pressTimer.current = window.setTimeout(() => {
+      cancel();
+      start({ clientX: x0, clientY: y0 }, item);
+    }, 350);
+  };
+
+  return { entry, pos, overDay, overWeek, grab, press, justDropped: () => Date.now() - droppedAt.current < 400 };
 }
 
 /** Rezept oder freien Eintrag ("Reste", "Essen gehen") für einen Tag wählen. */

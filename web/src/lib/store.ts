@@ -226,6 +226,12 @@ class Store {
     });
   }
 
+  /** Gericht auf einen anderen Tag verschieben (landet dort als letztes) */
+  movePlanEntry(entry: MealPlanEntry, day: string) {
+    if (entry.day === day) return;
+    this.save('meal_plan', { ...entry, day, created_at: now(), updated_at: now() });
+  }
+
   removePlanEntry(entry: MealPlanEntry) {
     this.remove('meal_plan', entry.id);
   }
